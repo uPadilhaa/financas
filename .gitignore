@@ -1,0 +1,53 @@
+# SO / Geral
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+pip-wheel-metadata/
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Django
+*.log
+db.sqlite3
+db.sqlite3-shm
+db.sqlite3-wal
+/media/
+staticfiles/
+# (não ignore a pasta "static/" se ela contém seus arquivos fonte)
+# NÃO ignore "migrations/" — versionar migrações é recomendado
+
+# Variáveis de ambiente / segredos
+.env
+.env.local
+.env.*.local
+
+# Testes / cobertura
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.pytest_cache/
+
+# Tipagem / linters
+.mypy_cache/
+.pytype/
+.ruff_cache/
+
+# IDEs / editores
+.vscode/
+.idea/
+*.code-workspace
