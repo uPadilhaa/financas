@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load l10n %}
+
+{% block content %}
+<section class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h4 fw-bold mb-0">Minhas despesas</h1>
+        <a class="btn btn-brand-green" href="{% url 'despesa_criar' %}">Nova despesa</a>
+    </div>
+
+    {# Mostra SOMENTE mensagens com a tag "despesa" (criar/editar) #}
+    {% if messages %}
+    {% for m in messages %}
+    {% if "despesa" in m.tags %}
+    <div class="alert alert-success py-2">{{ m }}</div>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    {% if despesas %}
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Categoria</th>
+                    <th class="text-end">Valor</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in despesas %}
+                <tr>
+                    <td>{{ d.data|date:"d/m/Y" }}</td>
+                    <td>{{ d.descricao }}</td>
+                    <td>
+                        {% if d.categoria %}
+                        {{ d.categoria.nome }}
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td class="text-end">R$ {{ d.valor|floatformat:2 }}</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-secondary" href="{% url 'despesa_editar' d.pk %}">Editar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+    {% else %}
+    <div class="bg-brand-blue-50 rounded p-4">
+        <p class="mb-2">Você ainda não registrou despesas.</p>
+        <a class="btn btn-brand-green" href="{% url 'despesa_criar' %}">Adicionar primeira despesa</a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

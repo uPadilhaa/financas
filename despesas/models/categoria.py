@@ -1,0 +1,26 @@
+from django.conf import settings
+from django.db import models
+from django.utils.text import slugify
+
+class Categoria(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="categorias")
+    nome = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=120, blank=True)
+    nome_normalizado = models.CharField(max_length=120, editable=False, db_index=True)
+
+    class Meta:
+        ordering = ["nome"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "nome_normalizado"],
+                name="uniq_categoria_por_usuario_normalizada",
+            )
+        ]
+
+    def save(self, *args, **kwargs):
+        self.nome_normalizado = slugify(self.nome or "", allow_unicode=False)
+        self.slug = slugify(self.nome or "", allow_unicode=True)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.nome

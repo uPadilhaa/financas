@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load socialaccount %}
+{% provider_login_url 'google' as google_login_url %}
+
+{% block content %}
+<section class="py-5 hero-blue">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-7 col-lg-6">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-4">
+            <h1 class="h4 fw-bold mb-2 text-brand-blue-900">Criar conta</h1>
+            <p class="text-body-secondary mb-4">Conecte sua conta Google para criar seu acesso no BpC$.</p>
+
+            <a href="{{ google_login_url }}" class="btn btn-brand-green w-100 py-2">
+              Criar conta com Google
+            </a>
+
+            <p class="small text-body-secondary mt-3 mb-0">
+              Usaremos seu e-mail e nome do Google para identificar seu perfil.
+            </p>
+          </div>
+        </div>
+        <div class="text-center mt-3">
+          <a href="{{ google_login_url }}" class="small text-brand-blue">Já tem conta? Entrar com Google</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  setTimeout(function () { window.location.href = "{{ google_login_url }}"; }, 1000);
+</script>
+{% endblock %}

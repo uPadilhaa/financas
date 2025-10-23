@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-7">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <h1 class="h4 fw-bold mb-3">Nova despesa</h1>
+
+                        <form method="post" novalidate>
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label">Categoria</label>
+                                {{ form.categoria }}
+                                <div class="form-text">
+                                    Não achou? <a href="{% url 'categoria_criar' %}">Criar categoria</a>.
+                                </div>
+                                {% if form.categoria.errors %}
+                                <div class="text-danger small">{{ form.categoria.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Descrição</label>
+                                {{ form.descricao }}
+                                {% if form.descricao.errors %}
+                                <div class="text-danger small">{{ form.descricao.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Valor</label>
+                                    {{ form.valor }}
+                                    {% if form.valor.errors %}
+                                    <div class="text-danger small">{{ form.valor.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Data</label>
+                                    {{ form.data }}
+                                    {% if form.data.errors %}
+                                    <div class="text-danger small">{{ form.data.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Observações</label>
+                                {{ form.observacoes }}
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-brand-green">Salvar despesa</button>
+                                <a class="btn btn-outline-secondary" href="{% url 'listar_despesa' %}">Cancelar</a>
+                            </div>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
