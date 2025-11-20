@@ -1,7 +1,6 @@
 from django import forms
-from django.utils.text import slugify
 from django.forms import inlineformset_factory
-from .models import Despesa, Categoria, ItemDespesa
+from despesas.models import Despesa, Categoria, ItemDespesa
 
 class DespesaForm(forms.ModelForm):
     valor = forms.DecimalField(
@@ -14,7 +13,7 @@ class DespesaForm(forms.ModelForm):
             "step": "0.01",
             "min": "0",
             "placeholder": "0.00",
-            "readonly": "readonly",
+            "readonly": "readonly", 
         })
     )
 
@@ -56,7 +55,6 @@ class DespesaForm(forms.ModelForm):
             kwargs["initial"]["_user"] = user
         return self
 
-# ... imports ...
 
 class ItemDespesaForm(forms.ModelForm):
     quantidade = forms.IntegerField(
@@ -104,7 +102,6 @@ class ItemDespesaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            
             if self.instance.quantidade is not None:
                 self.initial['quantidade'] = int(self.instance.quantidade)
             
@@ -121,39 +118,3 @@ ItemDespesaFormSet = inlineformset_factory(
     extra=1,
     can_delete=True
 )
-
-class CategoriaForm(forms.ModelForm):
-    class Meta:
-        model = Categoria
-        fields = ["nome"]
-        widgets = {
-            "nome": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: Alimentação"}),
-        }
-        labels = {"nome": "Nome da categoria"}
-
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop("user", None)
-        super().__init__(*args, **kwargs)
-
-    def clean_nome(self):
-        nome = (self.cleaned_data.get("nome") or "").strip()
-        if not nome:
-            raise forms.ValidationError("Informe um nome para a categoria.")
-        normalizado = slugify(nome, allow_unicode=False)
-        if self.user and Categoria.objects.filter(user=self.user, nome_normalizado=normalizado).exists():
-            raise forms.ValidationError("Você já possui uma categoria com esse nome.")
-        return nome
-
-    def save(self, commit=True):
-        obj = super().save(commit=False)
-        if self.user and not obj.user_id:
-            obj.user = self.user
-        if commit:
-            obj.save()
-        return obj
-
-class UploadNFCeForm(forms.Form):
-    imagem = forms.ImageField(
-        label="Foto/Imagem do QR-Code (NFC-e)",
-        widget=forms.ClearableFileInput(attrs={"class": "form-control"})
-    )

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-brand-blue-900 mb-0">Resumo de {{ mes_atual|date:"F Y" }}</h2>
+
+            <a href="{% url 'configurar_financas' %}" class="btn btn-outline-secondary btn-sm"
+                title="Configurar Renda Fixa">
+                <i class="bi bi-gear-fill me-1"></i> Configurar
+            </a>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted text-uppercase small fw-bold">Orçamento Disponível</h6>
+                        <h3 class="text-primary fw-bold mb-0">R$ {{ receita_disponivel|floatformat:2 }}</h3>
+
+                        <div class="small text-muted mt-3 pt-3 border-top">
+                            <div class="d-flex justify-content-between">
+                                <span>Fixo:</span>
+                                <span>R$ {{ perfil.renda_fixa|floatformat:2 }}</span>
+                            </div>
+
+                            {% if tem_renda_extra %}
+                            <div class="d-flex justify-content-between text-success">
+                                <span>+ Extras ({{ mes_atual|date:"M" }}):</span>
+                                <span>R$ {{ extra_bruto|floatformat:2 }}</span>
+                            </div>
+                            {% endif %}
+
+                            <div class="d-flex justify-content-between text-primary mt-1">
+                                <span>- Retido:</span>
+                                <span>R$ {{ total_investido|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <h6 class="text-muted text-uppercase small fw-bold">Total Gasto</h6>
+                        <h3 class="text-danger fw-bold mb-0">R$ {{ total_gasto|floatformat:2 }}</h3>
+                        <div class="progress mt-3" style="height: 6px;">
+                            <div class="progress-bar bg-danger" role="progressbar"
+                                style="width: {% widthratio total_gasto receita_disponivel 100 %}%;"></div>
+                        </div>
+                        <a href="{% url 'listar_despesa' %}" class="stretched-link"></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div
+                    class="card border-0 shadow-sm h-100 {% if saldo >= 0 %}bg-brand-blue-50{% else %}bg-danger-subtle{% endif %}">
+                    <div class="card-body">
+                        <h6 class="text-muted text-uppercase small fw-bold">Saldo Restante</h6>
+                        <h3 class="fw-bold mb-0 {% if saldo >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            R$ {{ saldo|floatformat:2 }}
+                        </h3>
+                        <p class="small text-muted mt-2">
+                            {% if saldo >= 0 %}
+                            Dentro do orçamento.
+                            {% else %}
+                            Você extrapolou R$ {{ saldo|stringformat:"+d"|slice:"1:" }}
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-3 mt-4">
+            <a href="{% url 'despesa_criar' %}" class="btn btn-brand-green btn-lg shadow-sm">
+                <i class="bi bi-plus-lg"></i> Nova Despesa
+            </a>
+            <a href="{% url 'receita_criar' %}" class="btn btn-outline-primary btn-lg shadow-sm">
+                <i class="bi bi-cash-coin"></i> Renda Extra
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

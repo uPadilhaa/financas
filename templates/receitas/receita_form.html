@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="fw-bold mb-0 text-brand-blue-900">
+                                {% if edicao %}Editar Renda{% else %}Nova Renda{% endif %}
+                            </h4>
+                            <a href="{% url 'listar_receitas' %}" class="btn btn-sm btn-outline-secondary">Voltar</a>
+                        </div>
+
+                        <form method="post">
+                            {% csrf_token %}
+
+                            <div class="mb-3">
+                                <label class="form-label">Descrição</label>
+                                {{ form.descricao }}
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-success fw-semibold">Valor Bruto (Recebido)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white">R$</span>
+                                        {{ form.valor_bruto }}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-primary fw-semibold">Investir / Separar</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white">R$</span>
+                                        {{ form.valor_investimento }}
+                                    </div>
+                                    <div class="form-text small">Valor que não será usado para gastos.</div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Mês de Referência</label>
+                                {{ form.data }}
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Observações</label>
+                                {{ form.observacoes }}
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-brand-green py-2" type="submit">
+                                    {% if edicao %}Salvar Alterações{% else %}Registrar Renda{% endif %}
+                                </button>
+                            </div>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

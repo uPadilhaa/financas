@@ -37,10 +37,17 @@
             </a>
             <ul class="dropdown-menu dropdown-menu-lg-start shadow features-menu" aria-labelledby="featuresDropdown">
               {% if user.is_authenticated %}
+              <li><a class="dropdown-item nav-delay fw-bold text-primary" href="{% url 'dashboard' %}">
+                  <i class="bi bi-speedometer2 me-2"></i>Dashboard
+                </a></li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
               <li><a class="dropdown-item nav-delay" href="{% url 'despesa_criar' %}">Criar despesa</a></li>
               <li><a class="dropdown-item nav-delay" href="{% url 'listar_despesa' %}">Ver despesas</a></li>
               <li><a class="dropdown-item nav-delay" href="{% url 'categoria_criar' %}">Criar categorias</a></li>
               <li><a class="dropdown-item nav-delay" href="{% url 'listar_categorias' %}">Gerenciar Categorias</a></li>
+              <li><a class="dropdown-item nav-delay" href="{% url 'listar_receitas' %}">Minhas Rendas</a></li>
               {% else %}
               <li><a class="dropdown-item nav-delay" href="{% url 'login' %}?next={% url 'despesa_criar' %}">Criar
                   despesa</a></li>

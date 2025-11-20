@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h4 fw-bold mb-0 text-brand-blue-900">Minhas Rendas</h1>
+        <a class="btn btn-brand-green" href="{% url 'receita_criar' %}">
+            <i class="bi bi-plus-lg me-1"></i> Adicionar Renda
+        </a>
+    </div>
+
+    {% if messages %}
+    {% for m in messages %}
+    <div class="alert alert-success py-2 mb-3">{{ m }}</div>
+    {% endfor %}
+    {% endif %}
+
+    {% if receitas %}
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Data</th>
+                        <th>Descrição</th>
+                        <th class="text-end">Valor Bruto</th>
+                        <th class="text-end text-primary">Investido/Retido</th>
+                        <th class="text-end text-success">Disponível</th>
+                        <th class="text-end pe-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in receitas %}
+                    <tr>
+                        <td class="ps-3 text-nowrap">{{ r.data|date:"M/Y" }}</td>
+                        <td class="fw-semibold">{{ r.descricao }}</td>
+                        <td class="text-end text-muted">R$ {{ r.valor_bruto|floatformat:2 }}</td>
+                        <td class="text-end text-primary">
+                            {% if r.valor_investimento > 0 %}
+                            - R$ {{ r.valor_investimento|floatformat:2 }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold text-success">R$ {{ r.valor_disponivel|floatformat:2 }}</td>
+                        <td class="text-end pe-3">
+                            <a href="{% url 'receita_editar' r.pk %}" class="btn btn-sm btn-light border"
+                                title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-light border text-danger ms-1"
+                                data-bs-toggle="modal" data-bs-target="#modalDelete{{ r.pk }}" title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </button>
+
+                            <div class="modal fade text-start" id="modalDelete{{ r.pk }}" tabindex="-1"
+                                aria-hidden="true">
+                                <div class="modal-dialog modal-sm">
+                                    <div class="modal-content">
+                                        <div class="modal-body text-center p-4">
+                                            <h6 class="mb-3">Excluir esta renda?</h6>
+                                            <p class="small text-muted mb-4">{{ r.descricao }}</p>
+                                            <div class="d-flex justify-content-center gap-2">
+                                                <button type="button" class="btn btn-sm btn-secondary"
+                                                    data-bs-dismiss="modal">Cancelar</button>
+                                                <form action="{% url 'receita_deletar' r.pk %}" method="post">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-light rounded p-5 text-center">
+        <i class="bi bi-wallet2 fs-1 text-muted opacity-50"></i>
+        <p class="mt-3 mb-3 fw-semibold text-muted">Nenhuma renda cadastrada.</p>
+        <a class="btn btn-outline-primary" href="{% url 'receita_criar' %}">Começar agora</a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

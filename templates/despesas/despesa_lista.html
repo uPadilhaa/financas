@@ -42,7 +42,7 @@
                     </td>
                     <td>
                         <span class="badge bg-light text-dark border fw-normal">
-                            {{ d.forma_pagamento|default:"-" }}
+                            {{ d.get_forma_pagamento_display }}
                         </span>
                     </td>
                     <td class="text-center">
