@@ -13,8 +13,6 @@
           <div class="card-body p-4">
             <h1 class="h4 fw-bold mb-2 text-brand-blue-900">Entrar</h1>
             <p class="text-body-secondary mb-4">Use sua conta Google para acessar o BpC$.</p>
-
-            <!-- Se google_login_url vier vazio, usa o fallback /accounts/google/login/ -->
             <a href="{{ google_login_url|default:'/accounts/google/login/?process=login' }}"
               class="btn btn-brand-green w-100 py-2">
               <i class="bi bi-google me-2"></i> Continuar com Google

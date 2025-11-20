@@ -12,6 +12,10 @@ class DespesaForm(forms.ModelForm):
             "descricao": forms.TextInput(
                 attrs={"class": "form-control", "placeholder": "Ex.: Supermercado"}
             ),
+            "data": forms.DateInput(
+                format='%Y-%m-%d', 
+                attrs={"class": "form-control", "type": "date"}
+            ),
             "valor": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
             "data": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "observacoes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
@@ -21,7 +25,8 @@ class DespesaForm(forms.ModelForm):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         if user:
-            self.fields["categoria"].queryset = (
+            categoria_field = self.fields["categoria"]
+            categoria_field.queryset = (
                 Categoria.objects.filter(user=user).order_by("nome")
             )
 
@@ -42,7 +47,7 @@ class DespesaForm(forms.ModelForm):
             obj.save()
         return obj
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, **kwargs):
         user = kwargs.get("user")
         self = super().__new__(cls)
         if user:
@@ -73,7 +78,6 @@ class CategoriaForm(forms.ModelForm):
         nome = (self.cleaned_data.get("nome") or "").strip()
         if not nome:
             raise forms.ValidationError("Informe um nome para a categoria.")
-        # normaliza acentos/caixa: "Alimentação" == "alimentacao" == "ALIMENTAÇÃO"
         normalizado = slugify(nome, allow_unicode=False)
         if self.user and Categoria.objects.filter(
             user=self.user, nome_normalizado=normalizado
@@ -88,3 +92,9 @@ class CategoriaForm(forms.ModelForm):
         if commit:
             obj.save()
         return obj
+
+class UploadNFCeForm(forms.Form):
+    imagem = forms.ImageField(
+        label="Foto/Imagem do QR-Code (NFC-e)",
+        widget=forms.ClearableFileInput(attrs={"class": "form-control"})
+    )

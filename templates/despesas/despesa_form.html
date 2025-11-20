@@ -6,10 +6,33 @@
             <div class="col-lg-7">
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-4">
-                        <h1 class="h4 fw-bold mb-3">Nova despesa</h1>
 
+                        <!-- Cabeçalho + Ações -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h1 class="h4 fw-bold mb-0">
+                                {% if form.instance.pk %}Editar despesa{% else %}Nova despesa{% endif %}
+                            </h1>
+                            <div class="d-flex gap-2">
+                                <!-- Botão que abre o modal -->
+                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                    data-bs-target="#modalImportarNF">
+                                    Importar NF
+                                </button>
+                                <a class="btn btn-outline-secondary" href="{% url 'listar_despesa' %}">Voltar</a>
+                            </div>
+                        </div>
+
+                        <!-- Mensagens -->
+                        {% if messages %}
+                        {% for m in messages %}
+                        <div class="alert alert-{{ m.tags|default:'info' }} py-2 mb-3">{{ m }}</div>
+                        {% endfor %}
+                        {% endif %}
+
+                        <!-- Formulário principal -->
                         <form method="post" novalidate>
                             {% csrf_token %}
+
                             <div class="mb-3">
                                 <label class="form-label">Categoria</label>
                                 {{ form.categoria }}
@@ -52,7 +75,9 @@
                             </div>
 
                             <div class="d-flex gap-2">
-                                <button class="btn btn-brand-green">Salvar despesa</button>
+                                <button class="btn btn-brand-green" type="submit">
+                                    {% if form.instance.pk %}Salvar alterações{% else %}Salvar despesa{% endif %}
+                                </button>
                                 <a class="btn btn-outline-secondary" href="{% url 'listar_despesa' %}">Cancelar</a>
                             </div>
                         </form>
@@ -63,4 +88,31 @@
         </div>
     </div>
 </section>
+
+<!-- Modal: Importar NF (NFC-e via QR-Code) -->
+<div class="modal fade" id="modalImportarNF" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{% url 'despesa_importar_nfce' %}" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Importar NFC-e (QR-Code)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Imagem do QR-Code</label>
+                    <input type="file" name="imagem" accept="image/*" class="form-control" required>
+                    <div class="form-text">
+                        Envie uma foto nítida do QR-Code da NFC-e. Leremos o link da SEFAZ e
+                        preencheremos os campos da despesa automaticamente.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-brand-green">Ler QR e preencher</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
