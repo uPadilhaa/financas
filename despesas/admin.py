@@ -1,15 +1,8 @@
-# despesas/admin.py
 from django.contrib import admin
 from django.db.models import QuerySet
-from .models import Categoria, Despesa
-from .models.usuario import Usuario
-
+from .models import Categoria, Despesa, ItemDespesa, Usuario
 
 class OwnedByUserAdmin(admin.ModelAdmin):
-    """
-    Base para restringir o admin por usuário (se não for superuser)
-    """
-
     owner_field_name = "user" 
     limit_fk_by_owner = ()     
 
@@ -32,32 +25,26 @@ class OwnedByUserAdmin(admin.ModelAdmin):
                 )
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
+class ItemDespesaInline(admin.TabularInline):
+    model = ItemDespesa
+    extra = 0
+    readonly_fields = ("nome", "codigo", "quantidade", "unidade", "valor_unitario", "valor_total")
+    can_delete = False
 
 @admin.register(Categoria)
 class CategoriaAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "nome")
-    list_display_links = ("id", "nome")
-    search_fields = ("nome", "user__username", "user__email")
     list_filter = ("user",)
     ordering = ("user", "nome")
-
 
 @admin.register(Despesa)
 class DespesaAdmin(OwnedByUserAdmin):
     list_display = ("descricao", "valor", "data", "categoria", "user")
-    search_fields = ("descricao",)
     list_filter = ("data", "categoria", "user")
-    autocomplete_fields = ("categoria",)
-    date_hierarchy = "data"
+    inlines = [ItemDespesaInline] 
     limit_fk_by_owner = ("categoria",)  
-
 
 @admin.register(Usuario)
 class UsuarioAdmin(admin.ModelAdmin):
-    list_display = ("user", "email", "moeda", "limite_mensal", "criado_em")
-    search_fields = ("user__email", "user__first_name", "user__last_name")
-    list_select_related = ("user",)
-
-    @admin.display(description="E-mail")
-    def email(self, obj):
-        return obj.user.email
+    list_display = ("user", "email", "moeda")
+    def email(self, obj): return obj.user.email

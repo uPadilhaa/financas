@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h4 fw-bold mb-0">Minhas Categorias</h1>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" href="{% url 'listar_despesa' %}">Ver Despesas</a>
+            <a class="btn btn-brand-green" href="{% url 'categoria_criar' %}">Nova Categoria</a>
+        </div>
+    </div>
+
+    {% if messages %}
+    {% for m in messages %}
+    <div class="alert alert-success py-2 mb-3">{{ m }}</div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="card border-0 shadow-sm">
+        <div class="list-group list-group-flush">
+            {% for cat in categorias %}
+            <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                <div>
+                    <span class="fw-semibold">{{ cat.nome }}</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'categoria_editar' cat.pk %}" class="btn btn-sm btn-outline-secondary border-0"
+                        title="Editar">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <form action="{% url 'categoria_deletar' cat.pk %}" method="post" class="d-inline"
+                        onsubmit="return confirm('Tem certeza que deseja excluir esta categoria?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger border-0" title="Excluir">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-4 text-center text-muted">
+                Nenhuma categoria cadastrada.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

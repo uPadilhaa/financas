@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class Categoria(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="categorias")
@@ -24,3 +26,16 @@ class Categoria(models.Model):
 
     def __str__(self):
         return self.nome
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def criar_categorias_padrao(sender, instance, created, **kwargs):
+    if created:
+        padroes = ["Mercado", "Farmácia", "Transporte", "Alimentação", "Vestuário", "Casa", "Outros"]
+        objetos = []
+        for nome in padroes:
+            c = Categoria(user=instance, nome=nome)
+            c.nome_normalizado = slugify(nome, allow_unicode=False)
+            c.slug = slugify(nome, allow_unicode=True)
+            objetos.append(c)
+
+        Categoria.objects.bulk_create(objetos)

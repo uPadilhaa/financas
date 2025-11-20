@@ -1,87 +1,227 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block content %}
 <section class="py-5">
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-lg-7">
+            <div class="col-lg-10">
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-4">
 
-                        <!-- Cabeçalho + Ações -->
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h1 class="h4 fw-bold mb-0">
                                 {% if form.instance.pk %}Editar despesa{% else %}Nova despesa{% endif %}
                             </h1>
+
                             <div class="d-flex gap-2">
-                                <!-- Botão que abre o modal -->
-                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                {% if not form.instance.pk %}
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
                                     data-bs-target="#modalImportarNF">
-                                    Importar NF
+                                    <i class="bi bi-qr-code"></i> Importar NF
                                 </button>
-                                <a class="btn btn-outline-secondary" href="{% url 'listar_despesa' %}">Voltar</a>
+                                {% endif %}
                             </div>
                         </div>
 
-                        <!-- Mensagens -->
                         {% if messages %}
                         {% for m in messages %}
                         <div class="alert alert-{{ m.tags|default:'info' }} py-2 mb-3">{{ m }}</div>
                         {% endfor %}
                         {% endif %}
 
-                        <!-- Formulário principal -->
-                        <form method="post" novalidate>
+                        {% if form.errors or formset.errors %}
+                        <div class="alert alert-danger border-0 shadow-sm mb-4">
+                            <h6 class="alert-heading fw-bold mb-2">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>Atenção: Verifique os erros abaixo
+                            </h6>
+
+                            {% if form.errors %}
+                            <ul class="mb-2 ps-3">
+                                {% for field in form %}
+                                {% for error in field.errors %}
+                                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                {% endfor %}
+                                {% endfor %}
+                                {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+
+                            {% if formset.total_error_count > 0 %}
+                            <div class="border-top border-danger opacity-25 my-2"></div>
+                            <p class="mb-1 fw-semibold small">Problemas nos Itens:</p>
+                            <ul class="mb-0 ps-3">
+                                {% for error in formset.non_form_errors %}
+                                <li>{{ error }}</li>
+                                {% endfor %}
+                                {% for dict in formset.errors %}
+                                {% for field, error_list in dict.items %}
+                                {% for error in error_list %}
+                                <li><strong>Item {{ forloop.parentloop.counter }}:</strong> {{ error }}</li>
+                                {% endfor %}
+                                {% endfor %}
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <form method="post"
+                            action="{% if form.instance.pk %}{% url 'despesa_editar' form.instance.pk %}{% else %}{% url 'despesa_criar' %}{% endif %}"
+                            novalidate>
                             {% csrf_token %}
 
-                            <div class="mb-3">
-                                <label class="form-label">Categoria</label>
-                                {{ form.categoria }}
-                                <div class="form-text">
-                                    Não achou? <a href="{% url 'categoria_criar' %}">Criar categoria</a>.
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-8">
+                                    <label class="form-label">Emitente / Loja</label>
+                                    {{ form.emitente_nome }}
+                                    {% if form.emitente_nome.errors %}<div class="text-danger small">{{
+                                        form.emitente_nome.errors }}</div>{% endif %}
                                 </div>
-                                {% if form.categoria.errors %}
-                                <div class="text-danger small">{{ form.categoria.errors|join:", " }}</div>
-                                {% endif %}
+                                <div class="col-md-4">
+                                    <label class="form-label">CNPJ <span
+                                            class="text-muted fw-normal small">(Opcional)</span></label>
+                                    {{ form.emitente_cnpj }}
+                                </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label class="form-label">Descrição</label>
-                                {{ form.descricao }}
-                                {% if form.descricao.errors %}
-                                <div class="text-danger small">{{ form.descricao.errors|join:", " }}</div>
-                                {% endif %}
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-8">
+                                    <label class="form-label">Descrição Resumida <span
+                                            class="text-muted fw-normal small">(Opcional)</span></label>
+                                    {{ form.descricao }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Categoria</label>
+                                    {{ form.categoria }}
+                                    <div class="form-text">
+                                        Não achou? <a href="{% url 'categoria_criar' %}">Criar nova</a>.
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Valor</label>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold text-success">Valor Total (R$)</label>
                                     {{ form.valor }}
-                                    {% if form.valor.errors %}
-                                    <div class="text-danger small">{{ form.valor.errors|join:", " }}</div>
-                                    {% endif %}
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4">
                                     <label class="form-label">Data</label>
                                     {{ form.data }}
-                                    {% if form.data.errors %}
-                                    <div class="text-danger small">{{ form.data.errors|join:", " }}</div>
-                                    {% endif %}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Forma Pagamento</label>
+                                    {{ form.forma_pagamento }}
                                 </div>
                             </div>
+
+                            <div class="mb-4 border rounded p-3 bg-light-subtle">
+                                <h6 class="fw-bold border-bottom pb-2 mb-2 text-brand-blue-900">Itens da Despesa</h6>
+
+                                {{ formset.management_form }}
+                                {{ formset.non_form_errors }}
+
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-borderless align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="min-width: 250px;">Produto / Serviço</th>
+                                                <th style="width: 100px;">Qtd</th>
+                                                <th style="width: 120px;">Unit (R$)</th>
+                                                <th style="width: 120px;">Total (R$)</th>
+                                                <th style="width: 40px;" class="text-center" title="Excluir item"><i
+                                                        class="bi bi-trash"></i></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="itens-body">
+                                            {% for item_form in formset %}
+                                            <tr class="item-row">
+                                                {% for hidden in item_form.hidden_fields %}
+                                                {{ hidden }}
+                                                {% endfor %}
+
+                                                <td class="pe-2">
+                                                    {{ item_form.nome }}
+                                                    {% if item_form.nome.errors %}
+                                                    <div class="text-danger small">{{ item_form.nome.errors|join:", " }}
+                                                    </div>
+                                                    {% endif %}
+                                                </td>
+
+                                                <td class="pe-2">
+                                                    {{ item_form.quantidade }}
+                                                </td>
+
+                                                <td class="pe-2">{{ item_form.valor_unitario }}</td>
+
+                                                <td class="pe-2">{{ item_form.valor_total }}</td>
+
+                                                <td class="text-center">
+                                                    {% if formset.can_delete %}
+                                                    <div class="form-check d-flex justify-content-center">
+                                                        {{ item_form.DELETE }}
+                                                    </div>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+
+                                            {% if item_form.errors %}
+                                            <tr>
+                                                <td colspan="5"
+                                                    class="text-danger small bg-danger-subtle ps-3 py-1 rounded mb-2">
+                                                    <i class="bi bi-arrow-return-right me-1"></i>
+                                                    Erro no item acima:
+                                                    {% for field in item_form %}
+                                                    {% for error in field.errors %}
+                                                    {{ error }}
+                                                    {% endfor %}
+                                                    {% endfor %}
+                                                    {{ item_form.non_field_errors }}
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="mt-2">
+                                    <button type="button" id="add-item-btn"
+                                        class="btn btn-sm btn-light border text-primary">
+                                        <i class="bi bi-plus-circle-fill me-1"></i> Adicionar outro item
+                                    </button>
+                                </div>
+
+                                <div class="mt-2 text-muted small border-top pt-2">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    O total é calculado automaticamente. Para excluir, marque a caixa e salve.
+                                </div>
+                            </div>
+
+                            <div class="d-none">{{ form.qtd_total_itens }}</div>
 
                             <div class="mb-3">
                                 <label class="form-label">Observações</label>
                                 {{ form.observacoes }}
                             </div>
 
-                            <div class="d-flex gap-2">
-                                <button class="btn btn-brand-green" type="submit">
-                                    {% if form.instance.pk %}Salvar alterações{% else %}Salvar despesa{% endif %}
+                            <div class="d-flex justify-content-between pt-3 border-top mt-4">
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-brand-green px-4" type="submit">
+                                        {% if form.instance.pk %}Salvar Alterações{% else %}Salvar Despesa{% endif %}
+                                    </button>
+                                    <a class="btn btn-outline-secondary" href="{% url 'listar_despesa' %}">Cancelar</a>
+                                </div>
+
+                                {% if form.instance.pk %}
+                                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
+                                    data-bs-target="#modalExcluir">
+                                    <i class="bi bi-trash me-1"></i> Excluir
                                 </button>
-                                <a class="btn btn-outline-secondary" href="{% url 'listar_despesa' %}">Cancelar</a>
+                                {% endif %}
                             </div>
                         </form>
-
                     </div>
                 </div>
             </div>
@@ -89,30 +229,58 @@
     </div>
 </section>
 
-<!-- Modal: Importar NF (NFC-e via QR-Code) -->
 <div class="modal fade" id="modalImportarNF" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="{% url 'despesa_importar_nfce' %}" method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="modal-header">
-                    <h5 class="modal-title">Importar NFC-e (QR-Code)</h5>
+                    <h5 class="modal-title">Importar NFC-e</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
                 <div class="modal-body">
                     <label class="form-label">Imagem do QR-Code</label>
                     <input type="file" name="imagem" accept="image/*" class="form-control" required>
-                    <div class="form-text">
-                        Envie uma foto nítida do QR-Code da NFC-e. Leremos o link da SEFAZ e
-                        preencheremos os campos da despesa automaticamente.
+                    <div class="form-text mt-2">
+                        <i class="bi bi-info-circle"></i> Envie uma foto nítida do QR-Code.
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-brand-green">Ler QR e preencher</button>
+                    <button type="submit" class="btn btn-brand-green">Ler e Preencher</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+{% if form.instance.pk %}
+<div class="modal fade" id="modalExcluir" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{% url 'despesa_deletar' form.instance.pk %}" method="post">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">Excluir Despesa?</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja excluir esta despesa permanentemente?</p>
+                    <div class="alert alert-light border">
+                        <strong>{{ form.instance.descricao }}</strong><br>
+                        Valor: R$ {{ form.instance.valor }}
+                    </div>
+                    <p class="small text-muted mb-0">Todos os itens associados também serão apagados.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Confirmar Exclusão</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script src="{% static 'js/despesa_form.js' %}"></script>
 {% endblock %}

@@ -40,6 +40,7 @@
               <li><a class="dropdown-item nav-delay" href="{% url 'despesa_criar' %}">Criar despesa</a></li>
               <li><a class="dropdown-item nav-delay" href="{% url 'listar_despesa' %}">Ver despesas</a></li>
               <li><a class="dropdown-item nav-delay" href="{% url 'categoria_criar' %}">Criar categorias</a></li>
+              <li><a class="dropdown-item nav-delay" href="{% url 'listar_categorias' %}">Gerenciar Categorias</a></li>
               {% else %}
               <li><a class="dropdown-item nav-delay" href="{% url 'login' %}?next={% url 'despesa_criar' %}">Criar
                   despesa</a></li>
