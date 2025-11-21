@@ -3,9 +3,15 @@ from django.utils.text import slugify
 from despesas.models import Categoria
 
 class CategoriaForm(forms.ModelForm):
+    orcamento_mensal = forms.DecimalField(
+        label="Orçamento Mensal (Meta)",
+        max_digits=10, decimal_places=2, localize=False,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "0.00"})
+    )
+
     class Meta:
         model = Categoria
-        fields = ["nome"]
+        fields = ["nome", "orcamento_mensal"]
         widgets = {
             "nome": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: Alimentação"}),
         }

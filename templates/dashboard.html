@@ -1,124 +1,218 @@
 {% extends "base.html" %}
-{% load static %} {% block content %}
-
+{% load static %}
+{% block content %}
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
-<section class="py-5 bg-light">
+<section class="py-4 bg-light">
     <div class="container">
         
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold text-brand-blue-900 mb-0">Painel Financeiro</h2>
+            <div>
+                <h2 class="fw-bold text-brand-blue-900 mb-0">Painel Financeiro</h2>
+                <span class="text-muted small">{{ mes_atual|date:"F Y" }}</span>
+            </div>
             <div class="d-flex gap-2">
-                <a href="{% url 'configurar_financas' %}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-gear-fill me-1"></i> Configurar
-                </a>
-                <a href="{% url 'despesa_criar' %}" class="btn btn-brand-green btn-sm">
-                    <i class="bi bi-plus-lg"></i> Nova Despesa
-                </a>
+                <a href="{% url 'configurar_financas' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-gear-fill me-1"></i> Config</a>
+                <a href="{% url 'despesa_criar' %}" class="btn btn-brand-green btn-sm"><i class="bi bi-plus-lg"></i> Nova Despesa</a>
             </div>
         </div>
 
-        <div class="row g-4 mb-4">
+        <div class="row g-3 mb-4">
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center p-4">
-                        <h6 class="text-muted text-uppercase small fw-bold mb-3">Orçamento Disponível</h6>
-                        <h2 class="text-primary fw-bold display-6">R$ {{ total_disponivel|floatformat:2 }}</h2>
-                        <p class="small text-muted mt-2">Líquido (Fixo + Extras - Investido)</p>
+                    <div class="card-body p-3">
+                        <small class="text-muted fw-bold text-uppercase">Orçamento Disponível</small>
+                        <h3 class="text-primary fw-bold mt-1">R$ {{ total_disponivel|floatformat:2 }}</h3>
                     </div>
                 </div>
             </div>
-            
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm h-100 hover-shadow transition-all">
-                    <a href="{% url 'listar_despesa' %}?mes={{ mes_atual|date:'m' }}&ano={{ mes_atual|date:'Y' }}" 
-                       class="text-decoration-none text-dark">
-                        <div class="card-body text-center p-4">
-                            <h6 class="text-muted text-uppercase small fw-bold mb-3">Total Gasto ({{ mes_atual|date:"M" }})</h6>
-                            <h2 class="text-danger fw-bold display-6">R$ {{ total_gasto|floatformat:2 }}</h2>
-                            <div class="progress mt-3" style="height: 6px;">
-                                <div class="progress-bar bg-danger" style="width: {% widthratio total_gasto total_disponivel 100 %}%;"></div>
+                    <a href="{% url 'listar_despesa' %}?mes={{ mes_atual|date:'m' }}&ano={{ mes_atual|date:'Y' }}" class="text-decoration-none text-dark">
+                        <div class="card-body p-3">
+                            <small class="text-muted fw-bold text-uppercase">Total Gasto</small>
+                            <h3 class="text-danger fw-bold mt-1">R$ {{ total_gasto|floatformat:2 }}</h3>
+                            <div class="progress" style="height: 4px;">
+                                <div class="progress-bar bg-danger" style="width: {{ pct_orcamento|floatformat:0 }}%;"></div>
                             </div>
-                            <div class="small text-muted mt-2"><i class="bi bi-box-arrow-up-right me-1"></i> Ver detalhes</div>
+                            <small class="text-muted" style="font-size: 0.75rem">{{ pct_orcamento|floatformat:1 }}% do orçamento</small>
                         </div>
                     </a>
                 </div>
             </div>
-
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm h-100 {% if saldo >= 0 %}bg-success-subtle{% else %}bg-danger-subtle{% endif %}">
-                    <div class="card-body text-center p-4">
-                        <h6 class="text-muted text-uppercase small fw-bold mb-3">Saldo Restante</h6>
-                        <h2 class="fw-bold display-6 {% if saldo >= 0 %}text-success-emphasis{% else %}text-danger-emphasis{% endif %}">
+                    <div class="card-body p-3">
+                        <small class="text-muted fw-bold text-uppercase">Saldo Restante</small>
+                        <h3 class="fw-bold mt-1 {% if saldo >= 0 %}text-success-emphasis{% else %}text-danger-emphasis{% endif %}">
                             R$ {{ saldo|floatformat:2 }}
-                        </h2>
-                        <p class="small mt-2 mb-0 fw-semibold">
-                            {% if saldo >= 0 %}Sucesso! Dentro da meta.{% else %}Você extrapolou R$ {{ saldo|stringformat:"+d"|slice:"1:" }}{% endif %}
-                        </p>
+                        </h3>
                     </div>
                 </div>
             </div>
         </div>
 
-        <ul class="nav nav-tabs nav-fill mb-4 border-bottom-0" id="dashTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active fw-bold" id="resumo-tab" data-bs-toggle="tab" 
-                        data-bs-target="#resumo-pane" type="button" role="tab">
-                    <i class="bi bi-grid-1x2 me-2"></i>Resumo do Mês
+        <ul class="nav nav-tabs nav-fill mb-4" id="dashTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active fw-bold" id="dash-tab" data-bs-toggle="tab" data-bs-target="#dash-pane">
+                    <i class="bi bi-speedometer2 me-2"></i>Dashboard
                 </button>
             </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-bold" id="analise-tab" data-bs-toggle="tab" 
-                        data-bs-target="#analise-pane" type="button" role="tab">
-                    <i class="bi bi-graph-up-arrow me-2"></i>Análises Gráficas
+            <li class="nav-item">
+                <button class="nav-link fw-bold" id="cat-tab" data-bs-toggle="tab" data-bs-target="#cat-pane">
+                    <i class="bi bi-tags me-2"></i>Análise por Categoria
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" id="comp-tab" data-bs-toggle="tab" data-bs-target="#comp-pane">
+                    <i class="bi bi-activity me-2"></i>Comportamento
                 </button>
             </li>
         </ul>
 
-        <div class="tab-content" id="dashTabsContent">
+        <div class="tab-content">
             
-            <div class="tab-pane fade show active" id="resumo-pane" role="tabpanel">
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h5 class="card-title fw-bold text-brand-blue-900">Gastos por Categoria (Este Mês)</h5>
-                                {% if graficos.pizza_cat %}
-                                    <div id="chart-pizza" style="height: 350px;"></div>
-                                {% else %}
-                                    <p class="text-muted text-center py-5">Sem dados de despesa neste mês.</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="tab-pane fade" id="analise-pane" role="tabpanel">
+            <div class="tab-pane fade show active" id="dash-pane">
                 <div class="row g-4">
                     <div class="col-lg-6">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body">
-                                <h5 class="card-title fw-bold text-brand-blue-900 mb-3">Evolução Mensal</h5>
-                                {% if graficos.barras_evolucao %}
-                                    <div id="chart-barras" style="height: 350px;"></div>
-                                {% else %}
-                                    <p class="text-muted text-center py-5">Insira dados para ver a evolução.</p>
-                                {% endif %}
+                                <h6 class="fw-bold text-brand-blue-900">Gastos por Categoria (Mês Atual)</h6>
+                                {% if graficos.pizza_mes %}<div id="chart-pizza"></div>{% else %}<p class="text-center text-muted py-4">Sem dados.</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body">
+                                <h6 class="fw-bold text-brand-blue-900">Receita x Despesa x Investimento</h6>
+                                {% if graficos.comparativo %}<div id="chart-comp"></div>{% else %}<p class="text-center text-muted py-4">Sem dados.</p>{% endif %}
                             </div>
                         </div>
                     </div>
 
-                    <div class="col-lg-6">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <h5 class="card-title fw-bold text-brand-blue-900 mb-3">Tendência de Categorias</h5>
-                                {% if graficos.area_tendencia %}
-                                    <div id="chart-area" style="height: 350px;"></div>
-                                {% else %}
-                                    <p class="text-muted text-center py-5">Sem histórico suficiente.</p>
-                                {% endif %}
+                    <div class="col-12">
+                         <div class="accordion shadow-sm" id="accMeta">
+                            <div class="accordion-item border-0">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cMeta">
+                                        <i class="bi bi-graph-up-arrow me-2 text-danger"></i> Gasto Acumulado vs Teto Mensal
+                                    </button>
+                                </h2>
+                                <div id="cMeta" class="accordion-collapse collapse" data-bs-parent="#accMeta">
+                                    <div class="accordion-body">
+                                        {% if graficos.gasto_acumulado %}<div id="chart-meta"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
+                                    </div>
+                                </div>
                             </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="cat-pane">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="fw-bold text-brand-blue-900">Top 5 Categorias (Total)</h6>
+                                {% if graficos.top5_cat %}<div id="chart-top5"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="fw-bold text-brand-blue-900">Orçado x Realizado</h6>
+                                {% if graficos.orcado_realizado %}<div id="chart-orc"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                         <div class="accordion shadow-sm" id="accPareto">
+                            <div class="accordion-item border-0">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cPareto">
+                                        <i class="bi bi-bar-chart-steps me-2 text-info"></i> Análise de Pareto (80/20)
+                                    </button>
+                                </h2>
+                                <div id="cPareto" class="accordion-collapse collapse" data-bs-parent="#accPareto">
+                                    <div class="accordion-body">
+                                        {% if graficos.pareto %}<div id="chart-pareto"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+                    
+                    <div class="col-12">
+                        <div class="accordion shadow-sm" id="accEvoCat">
+                           <div class="accordion-item border-0">
+                               <h2 class="accordion-header">
+                                   <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cEvoCat">
+                                       <i class="bi bi-bezier me-2 text-primary"></i> Evolução da Maior Categoria
+                                   </button>
+                               </h2>
+                               <div id="cEvoCat" class="accordion-collapse collapse" data-bs-parent="#accEvoCat">
+                                   <div class="accordion-body">
+                                       {% if graficos.evolucao_cat %}<div id="chart-evocat"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
+                                   </div>
+                               </div>
+                           </div>
+                        </div>
+                   </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="comp-pane">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="fw-bold text-brand-blue-900">Gastos por Dia da Semana</h6>
+                                {% if graficos.dia_semana %}<div id="chart-semana"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <h6 class="fw-bold text-brand-blue-900">Fixa vs Variável</h6>
+                                {% if graficos.fixa_var %}<div id="chart-tipo"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="accordion shadow-sm" id="accComp">
+                            <div class="accordion-item border-0 mb-2">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cHeat">
+                                        <i class="bi bi-calendar-grid me-2 text-danger"></i> Mapa de Calor (Calendário)
+                                    </button>
+                               </h2>
+                               <div id="cHeat" class="accordion-collapse collapse" data-bs-parent="#accComp">
+                                   <div class="accordion-body">
+                                       {% if graficos.heatmap %}<div id="chart-heat"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
+                                   </div>
+                               </div>
+                           </div>
+                           
+                           <div class="accordion-item border-0">
+                               <h2 class="accordion-header">
+                                   <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cBox">
+                                       <i class="bi bi-box-seam me-2 text-warning"></i> Distribuição e Outliers (Boxplot)
+                                   </button>
+                               </h2>
+                               <div id="cBox" class="accordion-collapse collapse" data-bs-parent="#accComp">
+                                   <div class="accordion-body">
+                                       {% if graficos.boxplot %}<div id="chart-box"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
+                                   </div>
+                               </div>
+                           </div>
                         </div>
                     </div>
                 </div>
@@ -128,15 +222,9 @@
     </div>
 </section>
 
-{% if graficos.pizza_cat %}
-<script id="data-pizza" type="application/json">{{ graficos.pizza_cat|safe }}</script>
-{% endif %}
-{% if graficos.barras_evolucao %}
-<script id="data-barras" type="application/json">{{ graficos.barras_evolucao|safe }}</script>
-{% endif %}
-{% if graficos.area_tendencia %}
-<script id="data-area" type="application/json">{{ graficos.area_tendencia|safe }}</script>
-{% endif %}
+{% for key, json_data in graficos.items %}
+<script id="d-{{ key }}" type="application/json">{{ json_data|safe }}</script>
+{% endfor %}
 
 <script src="{% static 'js/dashboard.js' %}"></script>
 {% endblock %}

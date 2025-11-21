@@ -9,6 +9,7 @@ class Categoria(models.Model):
     nome = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120, blank=True)
     nome_normalizado = models.CharField(max_length=120, editable=False, db_index=True)
+    orcamento_mensal = models.DecimalField("Orçamento Mensal (R$)", max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         ordering = ["nome"]

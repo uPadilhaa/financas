@@ -21,7 +21,7 @@ class DespesaForm(forms.ModelForm):
         model = Despesa
         fields = [
             "categoria", "emitente_nome", "emitente_cnpj", "descricao", 
-            "valor", "forma_pagamento", "qtd_total_itens", "data", "observacoes"
+            "valor", "forma_pagamento", "tipo", "qtd_total_itens", "data", "observacoes" 
         ]
         widgets = {
             "categoria": forms.Select(attrs={"class": "form-select"}),
@@ -29,6 +29,7 @@ class DespesaForm(forms.ModelForm):
             "emitente_cnpj": forms.TextInput(attrs={"class": "form-control", "placeholder": "00.000.000/0000-00 (Opcional)"}),
             "descricao": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: Compras do mês (Opcional)"}),
             "forma_pagamento": forms.Select(attrs={"class": "form-select"}),
+            "tipo": forms.Select(attrs={"class": "form-select"}),
             "qtd_total_itens": forms.NumberInput(attrs={"class": "form-control", "readonly": "readonly"}),
             "data": forms.DateInput(format='%Y-%m-%d', attrs={"class": "form-control", "type": "date"}),
             "observacoes": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Observações gerais..."}),

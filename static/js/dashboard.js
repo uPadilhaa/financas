@@ -1,33 +1,35 @@
 document.addEventListener('DOMContentLoaded', function() {
     
-    function renderChart(chartId, dataScriptId) {
-        const chartContainer = document.getElementById(chartId);
-        const dataScript = document.getElementById(dataScriptId);
+    function renderChart(chartId, dataKey) {
+        const container = document.getElementById(chartId);
+        const script = document.getElementById('d-' + dataKey);
 
-        if (chartContainer && dataScript) {
+        if (container && script) {
             try {
-                const json = JSON.parse(dataScript.textContent);
-                const config = {
-                    responsive: true, 
-                    displayModeBar: false, 
-                    staticPlot: false 
-                };
-
+                const json = JSON.parse(script.textContent);
+                const config = { responsive: true, displayModeBar: false };
                 Plotly.newPlot(chartId, json.data, json.layout, config);
             } catch (e) {
-                console.error("Erro chart " + chartId, e);
+                console.error(`Erro render ${chartId}`, e);
             }
         }
     }
 
-    renderChart('chart-pizza', 'data-pizza');
-    renderChart('chart-barras', 'data-barras');
-    renderChart('chart-area', 'data-area');
-
-    const accordions = document.querySelectorAll('.accordion-collapse');
-    accordions.forEach(el => {
-        el.addEventListener('shown.bs.collapse', () => {
-            window.dispatchEvent(new Event('resize'));
+    renderChart('chart-pizza', 'pizza_mes');
+    renderChart('chart-comp', 'comparativo');
+    renderChart('chart-meta', 'gasto_acumulado');
+    renderChart('chart-top5', 'top5_cat');
+    renderChart('chart-orc', 'orcado_realizado');
+    renderChart('chart-pareto', 'pareto');
+    renderChart('chart-evocat', 'evolucao_cat');
+    renderChart('chart-semana', 'dia_semana');
+    renderChart('chart-tipo', 'fixa_var');
+    renderChart('chart-heat', 'heatmap');
+    renderChart('chart-box', 'boxplot');
+    const triggers = document.querySelectorAll('button[data-bs-toggle="tab"], .accordion-button');
+    triggers.forEach(btn => {
+        btn.addEventListener('click', () => {
+            setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 200);
         });
     });
 });

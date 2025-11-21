@@ -3,8 +3,8 @@ from django.db import models
 from django.utils import timezone
 
 from .categoria import Categoria
-# Importação do novo caminho
 from despesas.enums.forma_pagamento_enum import FormaPagamento
+from despesas.enums.tipo_despesa_enum import TipoDespesa
 
 class Despesa(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="despesas")
@@ -15,7 +15,7 @@ class Despesa(models.Model):
     valor = models.DecimalField("Valor Total", max_digits=10, decimal_places=2)
     qtd_total_itens = models.IntegerField("Qtd. Itens", default=0)
     forma_pagamento = models.CharField("Forma de Pagamento", max_length=20, choices=FormaPagamento.choices, default=FormaPagamento.OUTROS)
-    
+    tipo = models.CharField("Tipo de Despesa", max_length=10, choices=TipoDespesa.choices, default=TipoDespesa.VARIAVEL)
     data = models.DateField(default=timezone.localdate)
     observacoes = models.TextField(blank=True, null=True)
 
