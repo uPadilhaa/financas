@@ -1,89 +1,160 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block content %}
 <section class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h4 fw-bold mb-0 text-brand-blue-900">Minhas Rendas</h1>
-        <a class="btn btn-brand-green" href="{% url 'receita_criar' %}">
-            <i class="bi bi-plus-lg me-1"></i> Adicionar Renda
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{% url 'configurar_financas' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="bi bi-gear-fill me-1"></i> Renda Fixa
+            </a>
+            <a class="btn btn-brand-green shadow-sm" href="{% url 'receita_criar' %}">
+                <i class="bi bi-plus-lg me-1"></i> Adicionar Renda
+            </a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4 bg-light">
+        <div class="card-body p-3">
+            <form method="get" class="row g-2 align-items-center" id="filterForm">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" name="busca" class="form-control border-start-0 ps-0" 
+                               placeholder="Buscar descrição..." value="{{ filtro_busca|default:'' }}">
+                    </div>
+                </div>
+                <div class="col-md-3 col-6">
+                    <select name="mes" class="form-select form-select-sm">
+                        <option value="">Mês: Todos</option>
+                        <option value="1" {% if filtro_mes == '1' %}selected{% endif %}>Janeiro</option>
+                        <option value="11" {% if filtro_mes == '11' %}selected{% endif %}>Novembro</option>
+                         <option value="12" {% if filtro_mes == '12' %}selected{% endif %}>Dezembro</option>
+                    </select>
+                </div>
+                <div class="col-md-3 col-6">
+                    <select name="ano" class="form-select form-select-sm">
+                        <option value="">Ano: Todos</option>
+                        <option value="{{ hoje.year }}" {% if filtro_ano == hoje.year|stringformat:"i" %}selected{% endif %}>{{ hoje.year }}</option>
+                        <option value="{{ hoje.year|add:'-1' }}" {% if filtro_ano == hoje.year|add:'-1'|stringformat:"i" %}selected{% endif %}>{{ hoje.year|add:"-1" }}</option>
+                        {% for dt in anos_disponiveis %}
+                            {% if dt.year != hoje.year and dt.year != hoje.year|add:"-1" %}
+                                <option value="{{ dt.year }}" {% if filtro_ano == dt.year|stringformat:"i" %}selected{% endif %}>{{ dt.year }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
     </div>
 
     {% if messages %}
     {% for m in messages %}
-    <div class="alert alert-success py-2 mb-3">{{ m }}</div>
+    <div class="alert alert-success py-2 mb-3 shadow-sm border-0">{{ m }}</div>
     {% endfor %}
     {% endif %}
 
     {% if receitas %}
-    <div class="card border-0 shadow-sm">
-        <div class="table-responsive">
-            <table class="table align-middle table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-3">Data</th>
-                        <th>Descrição</th>
-                        <th class="text-end">Valor Bruto</th>
-                        <th class="text-end text-primary">Investido/Retido</th>
-                        <th class="text-end text-success">Disponível</th>
-                        <th class="text-end pe-3">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in receitas %}
-                    <tr>
-                        <td class="ps-3 text-nowrap">{{ r.data|date:"M/Y" }}</td>
-                        <td class="fw-semibold">{{ r.descricao }}</td>
-                        <td class="text-end text-muted">R$ {{ r.valor_bruto|floatformat:2 }}</td>
-                        <td class="text-end text-primary">
-                            {% if r.valor_investimento > 0 %}
-                            - R$ {{ r.valor_investimento|floatformat:2 }}
-                            {% else %}
-                            -
-                            {% endif %}
-                        </td>
-                        <td class="text-end fw-bold text-success">R$ {{ r.valor_disponivel|floatformat:2 }}</td>
-                        <td class="text-end pe-3">
-                            <a href="{% url 'receita_editar' r.pk %}" class="btn btn-sm btn-light border"
-                                title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <button type="button" class="btn btn-sm btn-light border text-danger ms-1"
-                                data-bs-toggle="modal" data-bs-target="#modalDelete{{ r.pk }}" title="Excluir">
-                                <i class="bi bi-trash"></i>
-                            </button>
+        
+        {% regroup receitas by data|date:"F Y" as receitas_por_mes %}
 
-                            <div class="modal fade text-start" id="modalDelete{{ r.pk }}" tabindex="-1"
-                                aria-hidden="true">
-                                <div class="modal-dialog modal-sm">
-                                    <div class="modal-content">
-                                        <div class="modal-body text-center p-4">
-                                            <h6 class="mb-3">Excluir esta renda?</h6>
-                                            <p class="small text-muted mb-4">{{ r.descricao }}</p>
-                                            <div class="d-flex justify-content-center gap-2">
-                                                <button type="button" class="btn btn-sm btn-secondary"
-                                                    data-bs-dismiss="modal">Cancelar</button>
-                                                <form action="{% url 'receita_deletar' r.pk %}" method="post">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
-                                                </form>
+        <div class="accordion" id="accordionReceitas">
+            {% for mes_group in receitas_por_mes %}
+            
+            <div class="accordion-item border-0 shadow-sm mb-3 overflow-hidden rounded">
+                <h2 class="accordion-header" id="headingRec{{ forloop.counter }}">
+                    <button class="accordion-button fw-bold text-success {% if not forloop.first %}collapsed{% endif %}" 
+                            type="button" data-bs-toggle="collapse" 
+                            data-bs-target="#collapseRec{{ forloop.counter }}" 
+                            aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}">
+                        <i class="bi bi-calendar-check me-2"></i> {{ mes_group.grouper|capfirst }}
+                        <span class="badge bg-success-subtle text-success ms-3 rounded-pill">{{ mes_group.list|length }} rendas</span>
+                    </button>
+                </h2>
+                
+                <div id="collapseRec{{ forloop.counter }}" 
+                     class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" 
+                     data-bs-parent="#accordionReceitas">
+                    
+                    <div class="accordion-body p-0">
+                        <div class="table-responsive">
+                            <table class="table align-middle table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4">Dia</th>
+                                        <th>Descrição</th>
+                                        <th class="text-end">Bruto</th>
+                                        <th class="text-end text-primary">Investido</th>
+                                        <th class="text-end text-success pe-4">Disponível</th>
+                                        <th class="text-end pe-3"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for r in mes_group.list %}
+                                    <tr>
+                                        <td class="ps-4 text-muted fw-bold">{{ r.data|date:"d" }}</td>
+                                        <td class="fw-semibold">{{ r.descricao }}</td>
+                                        <td class="text-end text-muted">R$ {{ r.valor_bruto|floatformat:2 }}</td>
+                                        <td class="text-end text-primary">
+                                            {% if r.valor_investimento > 0 %}
+                                            - R$ {{ r.valor_investimento|floatformat:2 }}
+                                            {% else %}
+                                            <span class="opacity-25">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end fw-bold text-success pe-4">R$ {{ r.valor_disponivel|floatformat:2 }}</td>
+                                        <td class="text-end pe-3">
+                                            <div class="btn-group">
+                                                <a href="{% url 'receita_editar' r.pk %}" class="btn btn-sm btn-light border"><i class="bi bi-pencil"></i></a>
+                                                <button type="button" class="btn btn-sm btn-light border text-danger" 
+                                                    data-bs-toggle="modal" data-bs-target="#modalDelRec{{ r.pk }}">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
                                             </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+
+                                            <div class="modal fade text-start" id="modalDelRec{{ r.pk }}" tabindex="-1" aria-hidden="true">
+                                                <div class="modal-dialog modal-sm modal-dialog-centered">
+                                                    <div class="modal-content">
+                                                        <div class="modal-body text-center p-4">
+                                                            <h6 class="mb-3">Excluir renda?</h6>
+                                                            <p class="small text-muted">{{ r.descricao }}</p>
+                                                            <div class="d-flex justify-content-center gap-2">
+                                                                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                                <form action="{% url 'receita_deletar' r.pk %}" method="post">
+                                                                    {% csrf_token %}
+                                                                    <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                                                                </form>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
         </div>
-    </div>
+
     {% else %}
-    <div class="bg-light rounded p-5 text-center">
-        <i class="bi bi-wallet2 fs-1 text-muted opacity-50"></i>
-        <p class="mt-3 mb-3 fw-semibold text-muted">Nenhuma renda cadastrada.</p>
-        <a class="btn btn-outline-primary" href="{% url 'receita_criar' %}">Começar agora</a>
+    <div class="bg-brand-blue-50 rounded p-5 text-center">
+        <i class="bi bi-wallet2 fs-1 text-brand-blue opacity-50"></i>
+        <p class="mt-3 mb-3 fw-semibold text-brand-blue-900">Nenhuma renda encontrada.</p>
+        {% if filtro_busca or filtro_mes or filtro_ano %}
+        <a href="{% url 'listar_receitas' %}" class="btn btn-outline-primary btn-sm">Limpar Filtros</a>
+        {% else %}
+        <a class="btn btn-brand-green" href="{% url 'receita_criar' %}">Adicionar Renda</a>
+        {% endif %}
     </div>
     {% endif %}
 </section>
+
+<script src="{% static 'js/despesa_lista.js' %}"></script>
 {% endblock %}

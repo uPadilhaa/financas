@@ -169,3 +169,37 @@ footer a:hover {
     transform: rotate(360deg);
   }
 }
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.hover-shadow {
+  transition: all 0.2s ease-in-out;
+}
+
+.hover-shadow:hover {
+  box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
+  transform: translateY(-1px);
+}
+
+.transition-all {
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-tabs .nav-link {
+  border: none;
+  color: #6c757d;
+  background-color: transparent;
+  border-bottom: 3px solid transparent;
+  padding-bottom: 1rem;
+}
+.nav-tabs .nav-link:hover {
+  color: var(--brand-blue);
+  border-color: transparent;
+}
+.nav-tabs .nav-link.active {
+  color: var(--brand-blue);
+  background-color: transparent;
+  border-bottom: 3px solid var(--brand-blue);
+}

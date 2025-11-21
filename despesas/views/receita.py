@@ -2,14 +2,40 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
+from django.db.models import Q
 
 from despesas.models import Receita
 from despesas.forms import ReceitaForm
 
 @login_required
 def listar_receitas(request):
-    receitas = Receita.objects.filter(user=request.user).order_by("-data", "-id")
-    return render(request, "receitas/receita_lista.html", {"receitas": receitas})
+    busca = request.GET.get('busca')
+    mes = request.GET.get('mes')
+    ano = request.GET.get('ano')
+
+    receitas = Receita.objects.filter(user=request.user)
+    if busca:
+        receitas = receitas.filter(descricao__icontains=busca)
+    
+    if mes and mes.isdigit():
+        receitas = receitas.filter(data__month=int(mes))
+    
+    if ano and ano.isdigit():
+        receitas = receitas.filter(data__year=int(ano))
+
+    receitas = receitas.order_by("-data", "-id")
+    hoje = timezone.localdate()
+    anos_disponiveis = receitas.dates('data', 'year', order='DESC')
+
+    context = {
+        "receitas": receitas,
+        "filtro_mes": mes,
+        "filtro_ano": ano,
+        "filtro_busca": busca,
+        "anos_disponiveis": anos_disponiveis,
+        "hoje": hoje
+    }
+    return render(request, "receitas/receita_lista.html", context)
 
 @login_required
 def criar_receita(request):
@@ -19,7 +45,7 @@ def criar_receita(request):
             receita = form.save(commit=False)
             receita.user = request.user
             receita.save()
-            messages.success(request, "Renda registrada!")
+            messages.success(request, "Renda registrada com sucesso!")
             return redirect("listar_receitas")
     else:
         form = ReceitaForm(initial={"data": timezone.localdate()})

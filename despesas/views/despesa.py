@@ -4,14 +4,53 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
 from django.utils import timezone
+from django.db.models import Q 
 
 from despesas.models import Despesa, Categoria, ItemDespesa
 from despesas.forms import DespesaForm, ItemDespesaFormSet
+from despesas.enums.forma_pagamento_enum import FormaPagamento 
 
 @login_required
 def listar_despesa(request):
-    despesas = Despesa.objects.filter(user=request.user).order_by("-data", "-id")
-    return render(request, "despesas/despesa_lista.html", {"despesas": despesas})
+    busca = request.GET.get('busca')
+    mes = request.GET.get('mes')
+    ano = request.GET.get('ano')
+    pagamento = request.GET.get('pagamento')
+
+    despesas = Despesa.objects.filter(user=request.user)
+
+    if busca:
+        despesas = despesas.filter(
+            Q(emitente_nome__icontains=busca) | 
+            Q(descricao__icontains=busca)
+        )
+    
+    if mes and mes.isdigit():
+        despesas = despesas.filter(data__month=int(mes))
+    
+    if ano and ano.isdigit():
+        despesas = despesas.filter(data__year=int(ano))
+    
+    if pagamento:
+        despesas = despesas.filter(forma_pagamento=pagamento)
+
+    despesas = despesas.order_by("-data", "-id")
+
+    hoje = timezone.localdate()
+    anos_disponiveis = despesas.dates('data', 'year', order='DESC')
+    
+    context = {
+        "despesas": despesas,
+        "opcoes_pagamento": FormaPagamento.choices, 
+        "filtro_mes": mes,
+        "filtro_ano": ano,
+        "filtro_busca": busca,
+        "filtro_pagamento": pagamento,
+        "anos_disponiveis": anos_disponiveis,
+        "hoje": hoje
+    }
+
+    return render(request, "despesas/despesa_lista.html", context)
 
 @login_required
 def criar_despesa(request):

@@ -1,87 +1,142 @@
 {% extends "base.html" %}
-{% block content %}
+{% load static %} {% block content %}
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
 <section class="py-5 bg-light">
     <div class="container">
+        
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="fw-bold text-brand-blue-900 mb-0">Resumo de {{ mes_atual|date:"F Y" }}</h2>
-
-            <a href="{% url 'configurar_financas' %}" class="btn btn-outline-secondary btn-sm"
-                title="Configurar Renda Fixa">
-                <i class="bi bi-gear-fill me-1"></i> Configurar
-            </a>
+            <h2 class="fw-bold text-brand-blue-900 mb-0">Painel Financeiro</h2>
+            <div class="d-flex gap-2">
+                <a href="{% url 'configurar_financas' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-gear-fill me-1"></i> Configurar
+                </a>
+                <a href="{% url 'despesa_criar' %}" class="btn btn-brand-green btn-sm">
+                    <i class="bi bi-plus-lg"></i> Nova Despesa
+                </a>
+            </div>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 mb-4">
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <h6 class="text-muted text-uppercase small fw-bold">Orçamento Disponível</h6>
-                        <h3 class="text-primary fw-bold mb-0">R$ {{ receita_disponivel|floatformat:2 }}</h3>
-
-                        <div class="small text-muted mt-3 pt-3 border-top">
-                            <div class="d-flex justify-content-between">
-                                <span>Fixo:</span>
-                                <span>R$ {{ perfil.renda_fixa|floatformat:2 }}</span>
-                            </div>
-
-                            {% if tem_renda_extra %}
-                            <div class="d-flex justify-content-between text-success">
-                                <span>+ Extras ({{ mes_atual|date:"M" }}):</span>
-                                <span>R$ {{ extra_bruto|floatformat:2 }}</span>
-                            </div>
-                            {% endif %}
-
-                            <div class="d-flex justify-content-between text-primary mt-1">
-                                <span>- Retido:</span>
-                                <span>R$ {{ total_investido|floatformat:2 }}</span>
-                            </div>
-                        </div>
+                    <div class="card-body text-center p-4">
+                        <h6 class="text-muted text-uppercase small fw-bold mb-3">Orçamento Disponível</h6>
+                        <h2 class="text-primary fw-bold display-6">R$ {{ total_disponivel|floatformat:2 }}</h2>
+                        <p class="small text-muted mt-2">Líquido (Fixo + Extras - Investido)</p>
                     </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100 hover-shadow transition-all">
+                    <a href="{% url 'listar_despesa' %}?mes={{ mes_atual|date:'m' }}&ano={{ mes_atual|date:'Y' }}" 
+                       class="text-decoration-none text-dark">
+                        <div class="card-body text-center p-4">
+                            <h6 class="text-muted text-uppercase small fw-bold mb-3">Total Gasto ({{ mes_atual|date:"M" }})</h6>
+                            <h2 class="text-danger fw-bold display-6">R$ {{ total_gasto|floatformat:2 }}</h2>
+                            <div class="progress mt-3" style="height: 6px;">
+                                <div class="progress-bar bg-danger" style="width: {% widthratio total_gasto total_disponivel 100 %}%;"></div>
+                            </div>
+                            <div class="small text-muted mt-2"><i class="bi bi-box-arrow-up-right me-1"></i> Ver detalhes</div>
+                        </div>
+                    </a>
                 </div>
             </div>
 
             <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <h6 class="text-muted text-uppercase small fw-bold">Total Gasto</h6>
-                        <h3 class="text-danger fw-bold mb-0">R$ {{ total_gasto|floatformat:2 }}</h3>
-                        <div class="progress mt-3" style="height: 6px;">
-                            <div class="progress-bar bg-danger" role="progressbar"
-                                style="width: {% widthratio total_gasto receita_disponivel 100 %}%;"></div>
-                        </div>
-                        <a href="{% url 'listar_despesa' %}" class="stretched-link"></a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div
-                    class="card border-0 shadow-sm h-100 {% if saldo >= 0 %}bg-brand-blue-50{% else %}bg-danger-subtle{% endif %}">
-                    <div class="card-body">
-                        <h6 class="text-muted text-uppercase small fw-bold">Saldo Restante</h6>
-                        <h3 class="fw-bold mb-0 {% if saldo >= 0 %}text-success{% else %}text-danger{% endif %}">
+                <div class="card border-0 shadow-sm h-100 {% if saldo >= 0 %}bg-success-subtle{% else %}bg-danger-subtle{% endif %}">
+                    <div class="card-body text-center p-4">
+                        <h6 class="text-muted text-uppercase small fw-bold mb-3">Saldo Restante</h6>
+                        <h2 class="fw-bold display-6 {% if saldo >= 0 %}text-success-emphasis{% else %}text-danger-emphasis{% endif %}">
                             R$ {{ saldo|floatformat:2 }}
-                        </h3>
-                        <p class="small text-muted mt-2">
-                            {% if saldo >= 0 %}
-                            Dentro do orçamento.
-                            {% else %}
-                            Você extrapolou R$ {{ saldo|stringformat:"+d"|slice:"1:" }}
-                            {% endif %}
+                        </h2>
+                        <p class="small mt-2 mb-0 fw-semibold">
+                            {% if saldo >= 0 %}Sucesso! Dentro da meta.{% else %}Você extrapolou R$ {{ saldo|stringformat:"+d"|slice:"1:" }}{% endif %}
                         </p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="d-flex gap-3 mt-4">
-            <a href="{% url 'despesa_criar' %}" class="btn btn-brand-green btn-lg shadow-sm">
-                <i class="bi bi-plus-lg"></i> Nova Despesa
-            </a>
-            <a href="{% url 'receita_criar' %}" class="btn btn-outline-primary btn-lg shadow-sm">
-                <i class="bi bi-cash-coin"></i> Renda Extra
-            </a>
+        <ul class="nav nav-tabs nav-fill mb-4 border-bottom-0" id="dashTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold" id="resumo-tab" data-bs-toggle="tab" 
+                        data-bs-target="#resumo-pane" type="button" role="tab">
+                    <i class="bi bi-grid-1x2 me-2"></i>Resumo do Mês
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="analise-tab" data-bs-toggle="tab" 
+                        data-bs-target="#analise-pane" type="button" role="tab">
+                    <i class="bi bi-graph-up-arrow me-2"></i>Análises Gráficas
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="dashTabsContent">
+            
+            <div class="tab-pane fade show active" id="resumo-pane" role="tabpanel">
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title fw-bold text-brand-blue-900">Gastos por Categoria (Este Mês)</h5>
+                                {% if graficos.pizza_cat %}
+                                    <div id="chart-pizza" style="height: 350px;"></div>
+                                {% else %}
+                                    <p class="text-muted text-center py-5">Sem dados de despesa neste mês.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="analise-pane" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body">
+                                <h5 class="card-title fw-bold text-brand-blue-900 mb-3">Evolução Mensal</h5>
+                                {% if graficos.barras_evolucao %}
+                                    <div id="chart-barras" style="height: 350px;"></div>
+                                {% else %}
+                                    <p class="text-muted text-center py-5">Insira dados para ver a evolução.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body">
+                                <h5 class="card-title fw-bold text-brand-blue-900 mb-3">Tendência de Categorias</h5>
+                                {% if graficos.area_tendencia %}
+                                    <div id="chart-area" style="height: 350px;"></div>
+                                {% else %}
+                                    <p class="text-muted text-center py-5">Sem histórico suficiente.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </section>
+
+{% if graficos.pizza_cat %}
+<script id="data-pizza" type="application/json">{{ graficos.pizza_cat|safe }}</script>
+{% endif %}
+{% if graficos.barras_evolucao %}
+<script id="data-barras" type="application/json">{{ graficos.barras_evolucao|safe }}</script>
+{% endif %}
+{% if graficos.area_tendencia %}
+<script id="data-area" type="application/json">{{ graficos.area_tendencia|safe }}</script>
+{% endif %}
+
+<script src="{% static 'js/dashboard.js' %}"></script>
 {% endblock %}
