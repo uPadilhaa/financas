@@ -18,13 +18,19 @@
                         {% csrf_token %}
 
                         <div class="mb-3">
-                            <label class="form-label">{{ form.nome.label }}</label>
+                            <label class="form-label">{{ form.nome.label }} <span class="text-danger">*</span></label>
                             {{ form.nome }}
                             {% if form.nome.errors %}
-                            <div class="text-danger small mt-1">
-                                {{ form.nome.errors|striptags }}
+                            <div class="invalid-feedback d-block">
+                                {{ form.nome.errors.0 }}
                             </div>
                             {% endif %}
+                        </div>
+                        
+                         <div class="mb-3">
+                            <label class="form-label">{{ form.orcamento_mensal.label }}</label>
+                            {{ form.orcamento_mensal }}
+                             <div class="invalid-feedback d-block">{{ form.orcamento_mensal.errors.0 }}</div>
                         </div>
 
                         <div class="d-flex gap-2">

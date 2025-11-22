@@ -7,32 +7,45 @@ class DespesaForm(forms.ModelForm):
         label="Valor Total (R$)",
         max_digits=10,
         decimal_places=2,
-        localize=False,
-        widget=forms.NumberInput(attrs={
-            "class": "form-control",
-            "step": "0.01",
-            "min": "0",
-            "placeholder": "0.00",
-            "readonly": "readonly", 
+        localize=True, 
+        widget=forms.TextInput(attrs={ 
+            "class": "form-control fw-bold text-success",
+            "readonly": "readonly",
+            "placeholder": "0,00"
         })
+    )
+    
+    desconto = forms.DecimalField(
+        label="Descontos (R$)",
+        max_digits=10, decimal_places=2, 
+        localize=True, 
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control text-danger", "placeholder": "0,00"})
+    )
+
+    parcelas_selecao = forms.ChoiceField(
+        label="Parcelas",
+        choices=[(i, f"{i}x") for i in range(1, 13)],
+        initial=1,
+        widget=forms.Select(attrs={"class": "form-select"})
     )
 
     class Meta:
         model = Despesa
         fields = [
             "categoria", "emitente_nome", "emitente_cnpj", "descricao", 
-            "valor", "forma_pagamento", "tipo", "qtd_total_itens", "data", "observacoes" 
+            "valor", "desconto", "forma_pagamento", "tipo", "qtd_total_itens", "data", "observacoes"
         ]
         widgets = {
             "categoria": forms.Select(attrs={"class": "form-select"}),
             "emitente_nome": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex: Supermercado Zaffari"}),
-            "emitente_cnpj": forms.TextInput(attrs={"class": "form-control", "placeholder": "00.000.000/0000-00 (Opcional)"}),
-            "descricao": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: Compras do mês (Opcional)"}),
+            "emitente_cnpj": forms.TextInput(attrs={"class": "form-control", "placeholder": "00.000.000/0000-00"}),
+            "descricao": forms.TextInput(attrs={"class": "form-control", "placeholder": "Opcional"}),
             "forma_pagamento": forms.Select(attrs={"class": "form-select"}),
             "tipo": forms.Select(attrs={"class": "form-select"}),
-            "qtd_total_itens": forms.NumberInput(attrs={"class": "form-control", "readonly": "readonly"}),
+            "qtd_total_itens": forms.HiddenInput(),
             "data": forms.DateInput(format='%Y-%m-%d', attrs={"class": "form-control", "type": "date"}),
-            "observacoes": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Observações gerais..."}),
+            "observacoes": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -43,52 +56,25 @@ class DespesaForm(forms.ModelForm):
         
         self.fields['emitente_nome'].required = True
         self.fields['forma_pagamento'].required = True
-        self.fields['descricao'].required = False
-        self.fields['emitente_cnpj'].required = False
-
-    def __new__(cls, *args, **kwargs):
-        user = kwargs.get("user")
-        self = super().__new__(cls)
-        if user:
-            setattr(self, "_user", user)
-            if "initial" not in kwargs:
-                kwargs["initial"] = {}
-            kwargs["initial"]["_user"] = user
-        return self
+        self.fields['tipo'].required = True
 
 
 class ItemDespesaForm(forms.ModelForm):
-    quantidade = forms.IntegerField(
-        widget=forms.NumberInput(attrs={
-            "class": "form-control form-control-sm item-qtd", 
-            "step": "1", 
-            "min": "0",
-            "placeholder": "1"
-        }),
-        min_value=0,
+    quantidade = forms.DecimalField(
+        max_digits=10, decimal_places=3, localize=True, 
+        widget=forms.TextInput(attrs={"class": "form-control form-control-sm item-qtd", "placeholder": "1"}),
         required=True
     )
     
     valor_unitario = forms.DecimalField(
-        max_digits=10, decimal_places=2, localize=False,
-        widget=forms.NumberInput(attrs={
-            "class": "form-control form-control-sm item-unit", 
-            "step": "0.01", 
-            "min": "0",
-            "placeholder": "0.00"
-        }),
-        min_value=0,
+        max_digits=10, decimal_places=2, localize=True, 
+        widget=forms.TextInput(attrs={"class": "form-control form-control-sm item-unit", "placeholder": "0,00"}),
         required=True
     )
 
     valor_total = forms.DecimalField(
-        max_digits=10, decimal_places=2, localize=False,
-        widget=forms.NumberInput(attrs={
-            "class": "form-control form-control-sm item-total", 
-            "readonly": "readonly", 
-            "tabindex": "-1",
-            "placeholder": "0.00"
-        }),
+        max_digits=10, decimal_places=2, localize=True, 
+        widget=forms.TextInput(attrs={"class": "form-control form-control-sm item-total", "readonly": "readonly"}),
         required=True
     )
 
@@ -96,26 +82,16 @@ class ItemDespesaForm(forms.ModelForm):
         model = ItemDespesa
         fields = ["nome", "quantidade", "valor_unitario", "valor_total", "codigo"]
         widgets = {
-            "nome": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Ex: Arroz 5kg"}),
+            "nome": forms.TextInput(attrs={"class": "form-control form-control-sm", "placeholder": "Item"}),
             "codigo": forms.HiddenInput(),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:
-            if self.instance.quantidade is not None:
-                self.initial['quantidade'] = int(self.instance.quantidade)
-            
-            if self.instance.valor_unitario is not None:
-                self.initial['valor_unitario'] = f"{self.instance.valor_unitario:.2f}"
-                
-            if self.instance.valor_total is not None:
-                self.initial['valor_total'] = f"{self.instance.valor_total:.2f}"
 
 ItemDespesaFormSet = inlineformset_factory(
     Despesa, 
     ItemDespesa, 
     form=ItemDespesaForm,
-    extra=1,
+    extra=0, 
+    min_num=1, 
+    validate_min=True,
     can_delete=True
 )

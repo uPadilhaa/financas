@@ -203,3 +203,16 @@ footer a:hover {
   background-color: transparent;
   border-bottom: 3px solid var(--brand-blue);
 }
+
+.accordion-button:not(.collapsed) {
+  box-shadow: none;
+  background-color: #fff; 
+  color: var(--brand-blue-900);
+  border-bottom: 1px solid #eee; 
+}
+.accordion-button:focus {
+  box-shadow: none;
+  border-color: rgba(0,0,0,.125);
+}
+
+

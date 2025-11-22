@@ -1,7 +1,7 @@
 from django import forms
 
-class UploadNFCeForm(forms.Form):
+class UploadNFeForm(forms.Form):
     imagem = forms.ImageField(
-        label="Foto/Imagem do QR-Code (NFC-e)",
+        label="Foto/Imagem do QR-Code (NF-e)",
         widget=forms.ClearableFileInput(attrs={"class": "form-control"})
     )

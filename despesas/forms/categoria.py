@@ -5,8 +5,8 @@ from despesas.models import Categoria
 class CategoriaForm(forms.ModelForm):
     orcamento_mensal = forms.DecimalField(
         label="Orçamento Mensal (Meta)",
-        max_digits=10, decimal_places=2, localize=False,
-        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "0.00"})
+        max_digits=10, decimal_places=2, localize=True, required=False,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "0,00"})
     )
 
     class Meta:
@@ -16,10 +16,14 @@ class CategoriaForm(forms.ModelForm):
             "nome": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: Alimentação"}),
         }
         labels = {"nome": "Nome da categoria"}
+        error_messages = {
+            'nome': {'required': 'O nome da categoria é obrigatório.'}
+        }
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
+        self.fields['nome'].required = True 
 
     def clean_nome(self):
         nome = (self.cleaned_data.get("nome") or "").strip()

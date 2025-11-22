@@ -3,228 +3,254 @@
 {% block content %}
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
-<section class="py-4 bg-light">
+<section class="py-5">
     <div class="container">
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-5 gap-3">
             <div>
                 <h2 class="fw-bold text-brand-blue-900 mb-0">Painel Financeiro</h2>
-                <span class="text-muted small">{{ mes_atual|date:"F Y" }}</span>
+                <span class="text-muted">{{ mes_atual|date:"F Y" }}</span>
             </div>
             <div class="d-flex gap-2">
-                <a href="{% url 'configurar_financas' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-gear-fill me-1"></i> Config</a>
-                <a href="{% url 'despesa_criar' %}" class="btn btn-brand-green btn-sm"><i class="bi bi-plus-lg"></i> Nova Despesa</a>
+                <a href="{% url 'listar_receitas' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-wallet2 me-1"></i> Ver Receitas
+                </a>
+                <a href="{% url 'listar_despesa' %}" class="btn btn-outline-danger">
+                    <i class="bi bi-receipt me-1"></i> Ver Despesas
+                </a>
             </div>
         </div>
 
-        <div class="row g-3 mb-4">
+        <div class="row g-4 mb-5">
             <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body p-3">
-                        <small class="text-muted fw-bold text-uppercase">Orçamento Disponível</small>
-                        <h3 class="text-primary fw-bold mt-1">R$ {{ total_disponivel|floatformat:2 }}</h3>
+                <div class="card border-0 shadow-sm h-100 bg-light-subtle">
+                    <div class="card-body p-4 position-relative">
+                        <button type="button" class="btn btn-sm btn-link text-secondary position-absolute top-0 end-0 mt-2 me-2" 
+                                data-bs-toggle="modal" data-bs-target="#modalLimites" title="Configurar Metas e Limites">
+                            <i class="bi bi-gear-fill fs-5"></i>
+                        </button>
+
+                        <small class="text-muted fw-bold text-uppercase ls-1">Orçamento Disponível</small>
+                        <h2 class="text-primary fw-bold mt-2 mb-0">R$ {{ total_disponivel|floatformat:2 }}</h2>
+                        <div class="small text-muted mt-1" style="font-size: 0.75rem">
+                            Meta: R$ {{ perfil.limite_mensal|floatformat:2 }}
+                        </div>
                     </div>
                 </div>
             </div>
+
             <div class="col-md-4">
                 <div class="card border-0 shadow-sm h-100 hover-shadow transition-all">
                     <a href="{% url 'listar_despesa' %}?mes={{ mes_atual|date:'m' }}&ano={{ mes_atual|date:'Y' }}" class="text-decoration-none text-dark">
-                        <div class="card-body p-3">
-                            <small class="text-muted fw-bold text-uppercase">Total Gasto</small>
-                            <h3 class="text-danger fw-bold mt-1">R$ {{ total_gasto|floatformat:2 }}</h3>
-                            <div class="progress" style="height: 4px;">
+                        <div class="card-body p-4">
+                            <small class="text-muted fw-bold text-uppercase ls-1">Total Gasto</small>
+                            <h2 class="text-danger fw-bold mt-2 mb-2">R$ {{ total_gasto|floatformat:2 }}</h2>
+                            <div class="progress" style="height: 6px;">
                                 <div class="progress-bar bg-danger" style="width: {{ pct_orcamento|floatformat:0 }}%;"></div>
                             </div>
-                            <small class="text-muted" style="font-size: 0.75rem">{{ pct_orcamento|floatformat:1 }}% do orçamento</small>
+                            <small class="text-muted mt-2 d-block" style="font-size: 0.8rem">{{ pct_orcamento|floatformat:1 }}% da meta</small>
                         </div>
                     </a>
                 </div>
             </div>
+
             <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100 {% if saldo >= 0 %}bg-success-subtle{% else %}bg-danger-subtle{% endif %}">
-                    <div class="card-body p-3">
-                        <small class="text-muted fw-bold text-uppercase">Saldo Restante</small>
-                        <h3 class="fw-bold mt-1 {% if saldo >= 0 %}text-success-emphasis{% else %}text-danger-emphasis{% endif %}">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body p-4">
+                        <small class="text-secondary fw-bold text-uppercase ls-1">Saldo Restante</small>
+                        <h2 class="fw-bold mt-2 mb-0 {% if saldo >= 0 %}text-success{% else %}text-danger{% endif %}">
                             R$ {{ saldo|floatformat:2 }}
-                        </h3>
+                        </h2>
                     </div>
                 </div>
             </div>
         </div>
 
-        <ul class="nav nav-tabs nav-fill mb-4" id="dashTabs" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active fw-bold" id="dash-tab" data-bs-toggle="tab" data-bs-target="#dash-pane">
-                    <i class="bi bi-speedometer2 me-2"></i>Dashboard
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-bold" id="cat-tab" data-bs-toggle="tab" data-bs-target="#cat-pane">
-                    <i class="bi bi-tags me-2"></i>Análise por Categoria
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link fw-bold" id="comp-tab" data-bs-toggle="tab" data-bs-target="#comp-pane">
-                    <i class="bi bi-activity me-2"></i>Comportamento
-                </button>
-            </li>
-        </ul>
-
-        <div class="tab-content">
+        <div class="row g-4">
             
-            <div class="tab-pane fade show active" id="dash-pane">
-                <div class="row g-4">
-                    <div class="col-lg-6">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <h6 class="fw-bold text-brand-blue-900">Gastos por Categoria (Mês Atual)</h6>
-                                {% if graficos.pizza_mes %}<div id="chart-pizza"></div>{% else %}<p class="text-center text-muted py-4">Sem dados.</p>{% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-lg-6">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body">
-                                <h6 class="fw-bold text-brand-blue-900">Receita x Despesa x Investimento</h6>
-                                {% if graficos.comparativo %}<div id="chart-comp"></div>{% else %}<p class="text-center text-muted py-4">Sem dados.</p>{% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12">
-                         <div class="accordion shadow-sm" id="accMeta">
-                            <div class="accordion-item border-0">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cMeta">
-                                        <i class="bi bi-graph-up-arrow me-2 text-danger"></i> Gasto Acumulado vs Teto Mensal
-                                    </button>
-                                </h2>
-                                <div id="cMeta" class="accordion-collapse collapse" data-bs-parent="#accMeta">
-                                    <div class="accordion-body">
-                                        {% if graficos.gasto_acumulado %}<div id="chart-meta"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
+            <div class="col-lg-6 d-flex flex-column gap-4">
+                
+                <div class="accordion shadow-sm rounded overflow-hidden" id="acc_pizza">
+                    <div class="accordion-item border-0">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-bold text-brand-blue-900 bg-white py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePizza">
+                                <i class="bi bi-pie-chart-fill me-2 text-primary"></i> Gastos por Categoria
+                            </button>
+                        </h2>
+                        <div id="collapsePizza" class="accordion-collapse collapse" data-bs-parent="#acc_pizza">
+                            <div class="accordion-body p-0">
+                                <div class="d-flex justify-content-end p-2 pe-3 bg-white border-bottom">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <input type="radio" class="btn-check" name="pizzaradio" id="pizza-global" onclick="toggleChart('chart-pizza', 'Global')">
+                                        <label class="btn btn-outline-primary" for="pizza-global">Hist.</label>
+                                        <input type="radio" class="btn-check" name="pizzaradio" id="pizza-mensal" checked onclick="toggleChart('chart-pizza', 'Mensal')">
+                                        <label class="btn btn-outline-primary" for="pizza-mensal">Mês</label>
                                     </div>
                                 </div>
+                                {% if graficos.pizza_mes %}<div id="chart-pizza" class="w-100"></div>{% else %}<p class="text-center text-muted py-4">Sem dados.</p>{% endif %}
                             </div>
-                         </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="tab-pane fade" id="cat-pane">
-                <div class="row g-4">
-                    <div class="col-lg-6">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="fw-bold text-brand-blue-900">Top 5 Categorias (Total)</h6>
-                                {% if graficos.top5_cat %}<div id="chart-top5"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-lg-6">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="fw-bold text-brand-blue-900">Orçado x Realizado</h6>
-                                {% if graficos.orcado_realizado %}<div id="chart-orc"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12">
-                         <div class="accordion shadow-sm" id="accPareto">
-                            <div class="accordion-item border-0">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cPareto">
-                                        <i class="bi bi-bar-chart-steps me-2 text-info"></i> Análise de Pareto (80/20)
-                                    </button>
-                                </h2>
-                                <div id="cPareto" class="accordion-collapse collapse" data-bs-parent="#accPareto">
-                                    <div class="accordion-body">
-                                        {% if graficos.pareto %}<div id="chart-pareto"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
+                <div class="accordion shadow-sm rounded overflow-hidden" id="acc_orc">
+                    <div class="accordion-item border-0">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-bold text-brand-blue-900 bg-white py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOrc">
+                                <i class="bi bi-clipboard-data me-2 text-secondary"></i> Orçado x Realizado
+                            </button>
+                        </h2>
+                        <div id="collapseOrc" class="accordion-collapse collapse" data-bs-parent="#acc_orc">
+                            <div class="accordion-body p-0">
+                                <div class="d-flex justify-content-end p-2 pe-3 bg-white border-bottom">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <input type="radio" class="btn-check" name="orcradio" id="orc-global" onclick="toggleChart('chart-orc', 'Global')">
+                                        <label class="btn btn-outline-primary" for="orc-global">Hist.</label>
+                                        <input type="radio" class="btn-check" name="orcradio" id="orc-mensal" checked onclick="toggleChart('chart-orc', 'Mensal')">
+                                        <label class="btn btn-outline-primary" for="orc-mensal">Mês</label>
                                     </div>
                                 </div>
+                                {% if graficos.orcado_realizado %}<div id="chart-orc" class="w-100"></div>{% else %}<p class="text-center text-muted py-4">Cadastre metas.</p>{% endif %}
                             </div>
-                         </div>
-                    </div>
-                    
-                    <div class="col-12">
-                        <div class="accordion shadow-sm" id="accEvoCat">
-                           <div class="accordion-item border-0">
-                               <h2 class="accordion-header">
-                                   <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cEvoCat">
-                                       <i class="bi bi-bezier me-2 text-primary"></i> Evolução da Maior Categoria
-                                   </button>
-                               </h2>
-                               <div id="cEvoCat" class="accordion-collapse collapse" data-bs-parent="#accEvoCat">
-                                   <div class="accordion-body">
-                                       {% if graficos.evolucao_cat %}<div id="chart-evocat"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
-                                   </div>
-                               </div>
-                           </div>
-                        </div>
-                   </div>
-                </div>
-            </div>
-
-            <div class="tab-pane fade" id="comp-pane">
-                <div class="row g-4">
-                    <div class="col-lg-6">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="fw-bold text-brand-blue-900">Gastos por Dia da Semana</h6>
-                                {% if graficos.dia_semana %}<div id="chart-semana"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <h6 class="fw-bold text-brand-blue-900">Fixa vs Variável</h6>
-                                {% if graficos.fixa_var %}<div id="chart-tipo"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-12">
-                        <div class="accordion shadow-sm" id="accComp">
-                            <div class="accordion-item border-0 mb-2">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cHeat">
-                                        <i class="bi bi-calendar-grid me-2 text-danger"></i> Mapa de Calor (Calendário)
-                                    </button>
-                               </h2>
-                               <div id="cHeat" class="accordion-collapse collapse" data-bs-parent="#accComp">
-                                   <div class="accordion-body">
-                                       {% if graficos.heatmap %}<div id="chart-heat"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
-                                   </div>
-                               </div>
-                           </div>
-                           
-                           <div class="accordion-item border-0">
-                               <h2 class="accordion-header">
-                                   <button class="accordion-button fw-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cBox">
-                                       <i class="bi bi-box-seam me-2 text-warning"></i> Distribuição e Outliers (Boxplot)
-                                   </button>
-                               </h2>
-                               <div id="cBox" class="accordion-collapse collapse" data-bs-parent="#accComp">
-                                   <div class="accordion-body">
-                                       {% if graficos.boxplot %}<div id="chart-box"></div>{% else %}<p class="text-center text-muted">Sem dados.</p>{% endif %}
-                                   </div>
-                               </div>
-                           </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-        </div>
+                <div class="accordion shadow-sm rounded overflow-hidden" id="acc_sem">
+                    <div class="accordion-item border-0">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-bold text-brand-blue-900 bg-white py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSem">
+                                <i class="bi bi-calendar-week me-2 text-warning"></i> Gastos por Dia da Semana
+                            </button>
+                        </h2>
+                        <div id="collapseSem" class="accordion-collapse collapse" data-bs-parent="#acc_sem">
+                            <div class="accordion-body p-0">
+                                <div class="d-flex justify-content-end p-2 pe-3 bg-white border-bottom">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <input type="radio" class="btn-check" name="semradio" id="sem-global" onclick="toggleChart('chart-semana', 'Global')">
+                                        <label class="btn btn-outline-primary" for="sem-global">Hist.</label>
+                                        <input type="radio" class="btn-check" name="semradio" id="sem-mensal" checked onclick="toggleChart('chart-semana', 'Mensal')">
+                                        <label class="btn btn-outline-primary" for="sem-mensal">Mês</label>
+                                    </div>
+                                </div>
+                                {% if graficos.dia_semana %}<div id="chart-semana" class="w-100"></div>{% else %}<p class="text-center text-muted py-4">Sem dados.</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <div class="col-lg-6 d-flex flex-column gap-4">
+
+                <div class="accordion shadow-sm rounded overflow-hidden" id="acc_comp">
+                    <div class="accordion-item border-0">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-bold text-brand-blue-900 bg-white py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseComp">
+                                <i class="bi bi-bar-chart-fill me-2 text-success"></i> Receita x Despesa x Investimento
+                            </button>
+                        </h2>
+                        <div id="collapseComp" class="accordion-collapse collapse" data-bs-parent="#acc_comp">
+                            <div class="accordion-body p-0">
+                                {% if graficos.comparativo %}<div id="chart-comp" class="w-100"></div>{% else %}<p class="text-center text-muted py-4">Sem dados.</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion shadow-sm rounded overflow-hidden" id="acc_top5">
+                    <div class="accordion-item border-0">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-bold text-brand-blue-900 bg-white py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTop5">
+                                <i class="bi bi-list-ol me-2 text-info"></i> Top 5 Categorias
+                            </button>
+                        </h2>
+                        <div id="collapseTop5" class="accordion-collapse collapse" data-bs-parent="#acc_top5">
+                            <div class="accordion-body p-0">
+                                <div class="d-flex justify-content-end p-2 pe-3 bg-white border-bottom">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <input type="radio" class="btn-check" name="top5radio" id="top5-global" onclick="toggleChart('chart-top5', 'Global')">
+                                        <label class="btn btn-outline-primary" for="top5-global">Hist.</label>
+                                        <input type="radio" class="btn-check" name="top5radio" id="top5-mensal" checked onclick="toggleChart('chart-top5', 'Mensal')">
+                                        <label class="btn btn-outline-primary" for="top5-mensal">Mês</label>
+                                    </div>
+                                </div>
+                                {% if graficos.top5_cat %}<div id="chart-top5" class="w-100"></div>{% else %}<p class="text-center text-muted py-4">Sem dados.</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion shadow-sm rounded overflow-hidden" id="acc_fixa">
+                    <div class="accordion-item border-0">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed fw-bold text-brand-blue-900 bg-white py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFixa">
+                                <i class="bi bi-wallet2 me-2 text-danger"></i> Fixa vs Variável
+                            </button>
+                        </h2>
+                        <div id="collapseFixa" class="accordion-collapse collapse" data-bs-parent="#acc_fixa">
+                            <div class="accordion-body p-0">
+                                <div class="d-flex justify-content-end p-2 pe-3 bg-white border-bottom">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <input type="radio" class="btn-check" name="fixaradio" id="fixa-global" onclick="toggleChart('chart-tipo', 'Global')">
+                                        <label class="btn btn-outline-primary" for="fixa-global">Hist.</label>
+                                        <input type="radio" class="btn-check" name="fixaradio" id="fixa-mensal" checked onclick="toggleChart('chart-tipo', 'Mensal')">
+                                        <label class="btn btn-outline-primary" for="fixa-mensal">Mês</label>
+                                    </div>
+                                </div>
+                                {% if graficos.fixa_var %}<div id="chart-tipo" class="w-100"></div>{% else %}<p class="text-center text-muted py-4">Sem dados.</p>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div> </div>
     </div>
 </section>
+
+<div class="modal fade" id="modalLimites" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light border-bottom-0">
+                <h5 class="modal-title fw-bold text-brand-blue-900">Configurar Metas</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'salvar_limites' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-danger">
+                            <i class="bi bi-shield-lock-fill me-1"></i> Teto Máximo (Hard Cap)
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white">R$</span>
+                            {{ form_limites.limite_mensal }}
+                        </div>
+                        <div class="form-text small">Valor absoluto que você não deseja ultrapassar de jeito nenhum.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-warning">
+                            <i class="bi bi-bell-fill me-1"></i> Alerta de Atenção (Soft Cap)
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white">R$</span>
+                            {{ form_limites.limite_aviso }}
+                        </div>
+                        <div class="form-text small">Valor gatilho para começarmos a te avisar sobre gastos excessivos.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-brand-green px-4">Salvar Metas</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 {% for key, json_data in graficos.items %}
 <script id="d-{{ key }}" type="application/json">{{ json_data|safe }}</script>
 {% endfor %}
 
 <script src="{% static 'js/dashboard.js' %}"></script>
+
 {% endblock %}

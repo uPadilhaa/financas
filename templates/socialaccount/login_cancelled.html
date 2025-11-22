@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="py-5 hero-blue">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-md-6 col-lg-5">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-5 text-center">
+            
+            <div class="mb-4">
+               <i class="bi bi-x-circle text-danger" style="font-size: 3rem;"></i>
+            </div>
+
+            <h2 class="h4 fw-bold mb-3 text-brand-blue-900">Login Cancelado</h2>
+            
+            <p class="text-muted mb-4">
+              Você decidiu cancelar o processo de login com o Google. Nenhuma conta foi acessada ou criada.
+            </p>
+
+            <div class="d-grid gap-2">
+              <a href="{% url 'login' %}" class="btn btn-brand-green">
+                Tentar Novamente
+              </a>
+              <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+                Voltar ao Início
+              </a>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

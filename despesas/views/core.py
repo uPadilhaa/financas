@@ -8,7 +8,7 @@ def home(request):
     return render(request, "home.html")
 
 def pagina_login(request):
-    return render(request, "auth/login.html")
+    return render(request, "account/login.html")
 
 def pagina_cadastro(request):
-    return render(request, "auth/cadastro.html")
+    return render(request, "account/signup.html")

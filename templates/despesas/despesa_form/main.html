@@ -1,0 +1,159 @@
+<form method="post" 
+      action="{% if form.instance.pk %}{% url 'despesa_editar' form.instance.pk %}{% else %}{% url 'despesa_criar' %}{% endif %}" 
+      id="formNovaDespesa" 
+      novalidate>
+    {% csrf_token %}
+
+    {% if not form.instance.pk %}
+    <div class="d-flex justify-content-end mb-3">
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="if(window.abrirModalImportacao) { window.abrirModalImportacao(); } else { window.abrirModalImportacaoStandalone(); }">
+            <i class="bi bi-qr-code me-1"></i> Importar NFC-e
+        </button>
+    </div>
+    {% endif %}
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <label class="form-label text-muted small text-uppercase fw-bold">Emitente / Loja <span class="text-danger">*</span></label>
+            {{ form.emitente_nome }}
+            <div class="invalid-feedback d-block">{{ form.emitente_nome.errors.0 }}</div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label text-muted small text-uppercase fw-bold">CNPJ <span class="fw-normal text-lowercase">(Opcional)</span></label>
+            {{ form.emitente_cnpj }}
+            <div class="invalid-feedback d-block">{{ form.emitente_cnpj.errors.0 }}</div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label text-muted small text-uppercase fw-bold">Descrição</label>
+        {{ form.descricao }}
+        <div class="invalid-feedback d-block">{{ form.descricao.errors.0 }}</div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label class="form-label text-muted small text-uppercase fw-bold">Categoria <span class="text-danger">*</span></label>
+            {{ form.categoria }}
+            <div class="invalid-feedback d-block">{{ form.categoria.errors.0 }}</div>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted small text-uppercase fw-bold">Tipo de Despesa <span class="text-danger">*</span></label>
+            {{ form.tipo }}
+            <div class="invalid-feedback d-block">{{ form.tipo.errors.0 }}</div>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label text-muted small text-uppercase fw-bold">Pagamento <span class="text-danger">*</span></label>
+            {{ form.forma_pagamento }}
+            <div class="invalid-feedback d-block">{{ form.forma_pagamento.errors.0 }}</div>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label class="form-label text-muted small text-uppercase fw-bold mb-2">Itens da Compra</label>
+        
+        {{ formset.management_form }}
+        
+        {% if formset.non_form_errors %}
+            <div class="alert alert-danger py-2 small">{{ formset.non_form_errors }}</div>
+        {% endif %}
+
+        <div class="table-responsive border rounded-3">
+            <table class="table table-sm table-hover mb-0 align-middle" id="tabelaItens">
+                <thead class="table-light text-secondary small">
+                    <tr>
+                        <th class="ps-3 py-2 font-monospace">PRODUTO <span class="text-danger">*</span></th>
+                        <th style="width: 80px">QTD <span class="text-danger">*</span></th>
+                        <th style="width: 110px">UNIT (R$) <span class="text-danger">*</span></th>
+                        <th style="width: 110px">TOTAL (R$)</th>
+                        <th style="width: 40px" class="text-center"><i class="bi bi-trash"></i></th>
+                    </tr>
+                </thead>
+                <tbody id="itens-body" class="bg-white">
+                    {% for item_form in formset %}
+                    <tr class="item-row">
+                        {% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}
+                        <td class="ps-3">
+                            {{ item_form.nome }}
+                            {% if item_form.nome.errors %}
+                                <div class="text-danger small d-block">{{ item_form.nome.errors.0 }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ item_form.quantidade }}
+                             {% if item_form.quantidade.errors %}<div class="text-danger small d-block">{{ item_form.quantidade.errors.0 }}</div>{% endif %}
+                        </td>
+                        <td>
+                            {{ item_form.valor_unitario }}
+                             {% if item_form.valor_unitario.errors %}<div class="text-danger small d-block">{{ item_form.valor_unitario.errors.0 }}</div>{% endif %}
+                        </td>
+                        <td>{{ item_form.valor_total }}</td>
+                        <td class="text-center">
+                            {% if formset.can_delete %}
+                                <div class="form-check d-inline-block">{{ item_form.DELETE }}</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <button type="button" id="add-item-btn" class="btn btn-sm btn-link text-decoration-none ps-0 mt-1">
+            <i class="bi bi-plus-lg me-1"></i> Adicionar item
+        </button>
+    </div>
+
+    <div class="p-3 bg-light rounded-3 mb-3">
+        <div class="row g-3">
+            <div class="col-6 col-md-3">
+                <label class="form-label small text-muted mb-1 fw-bold">Desconto (-)</label>
+                <div class="input-group bg-white">
+                    <span class="input-group-text border-end-0 bg-transparent text-muted">R$</span>
+                    {{ form.desconto }}
+                </div>
+                 <div class="invalid-feedback d-block">{{ form.desconto.errors.0 }}</div>
+            </div>
+
+            <div class="col-6 col-md-3">
+                <label class="form-label small text-muted mb-1 fw-bold">Parcelas</label>
+                {% if form.instance.pk %}
+                    <input type="text" class="form-control" value="{{ form.instance.parcela_atual }}/{{ form.instance.total_parcelas }}" disabled>
+                {% else %}
+                    {{ form.parcelas_selecao }}
+                {% endif %}
+            </div>
+
+            <div class="col-6 col-md-3">
+                <label class="form-label small text-muted mb-1 fw-bold">Data <span class="text-danger">*</span> {% if not form.instance.pk %}1ª Parc.{% endif %}</label>
+                {{ form.data }}
+                 <div class="invalid-feedback d-block">{{ form.data.errors.0 }}</div>
+            </div>
+
+            <div class="col-6 col-md-3">
+                <label class="form-label small text-success mb-1 fw-bold">Total a Pagar</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-success text-white border-success">R$</span>
+                    {{ form.valor }}
+                </div>
+                <div class="invalid-feedback d-block">{{ form.valor.errors.0 }}</div>
+                <div id="infoParcela" class="form-text small text-end text-success fw-bold mt-1" style="font-size: 0.75rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label class="form-label text-muted small text-uppercase fw-bold">Observações</label>
+        {{ form.observacoes }}
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+        {% if form.instance.pk %}
+            <a href="{% url 'listar_despesa' %}" class="btn btn-light border">Cancelar</a>
+            <button type="submit" class="btn btn-primary px-4" data-no-loader="true">Salvar Alterações</button>
+        {% else %}
+            <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-brand-green px-4" data-no-loader="true">Salvar Despesa</button>
+        {% endif %}
+    </div>
+</form>

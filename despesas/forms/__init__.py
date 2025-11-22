@@ -1,15 +1,17 @@
 from .categoria import CategoriaForm
 from .despesa import DespesaForm, ItemDespesaForm, ItemDespesaFormSet
-from .leitura_nf import UploadNFCeForm
+from .leitura_nf import UploadNFeForm
 from .receita import ReceitaForm
-from .configuracao import ConfiguracaoFinanceiraForm
+from .configuracao import ConfiguracaoRendaForm, LimitesGastosForm
+
 
 __all__ = [
     "CategoriaForm",
     "DespesaForm",
     "ItemDespesaForm", 
     "ItemDespesaFormSet",
-    "UploadNFCeForm",
+    "UploadNFeForm",
     "ReceitaForm",
-    "ConfiguracaoFinanceiraForm",
+    "ConfiguracaoRendaForm",
+    "LimitesGastosForm",
 ]

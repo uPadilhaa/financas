@@ -6,9 +6,9 @@
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h4 fw-bold mb-0 text-brand-blue-900">Minhas Despesas</h1>
-        <a class="btn btn-brand-green shadow-sm" href="{% url 'despesa_criar' %}">
+        <button type="button" class="btn btn-brand-green shadow-sm" onclick="abrirModalNovaDespesa('{% url 'despesa_criar' %}')">
             <i class="bi bi-plus-lg me-1"></i> Nova Despesa
-        </a>
+        </button>
     </div>
 
     <div class="card border-0 shadow-sm mb-4 bg-light">
@@ -42,9 +42,8 @@
                     <select name="ano" class="form-select form-select-sm">
                         <option value="">Ano: Todos</option>
                         <option value="{{ hoje.year }}" {% if filtro_ano == hoje.year|stringformat:"i" %}selected{% endif %}>{{ hoje.year }}</option>
-                        <option value="{{ hoje.year|add:'-1' }}" {% if filtro_ano == hoje.year|add:'-1'|stringformat:"i" %}selected{% endif %}>{{ hoje.year|add:"-1" }}</option>
                         {% for dt in anos_disponiveis %}
-                            {% if dt.year != hoje.year and dt.year != hoje.year|add:"-1" %}
+                            {% if dt.year != hoje.year %}
                                 <option value="{{ dt.year }}" {% if filtro_ano == dt.year|stringformat:"i" %}selected{% endif %}>{{ dt.year }}</option>
                             {% endif %}
                         {% endfor %}
@@ -69,39 +68,27 @@
     {% endif %}
 
     {% if despesas %}
-        
         {% regroup despesas by data|date:"F Y" as despesas_por_mes %}
-
         <div class="accordion" id="accordionMeses">
             {% for mes_group in despesas_por_mes %}
-            
             <div class="accordion-item border-0 shadow-sm mb-3 overflow-hidden rounded">
                 <h2 class="accordion-header" id="heading{{ forloop.counter }}">
                     <button class="accordion-button fw-bold text-brand-blue-900 {% if not forloop.first %}collapsed{% endif %}" 
                             type="button" data-bs-toggle="collapse" 
-                            data-bs-target="#collapseMes{{ forloop.counter }}" 
-                            aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" 
-                            aria-controls="collapseMes{{ forloop.counter }}">
+                            data-bs-target="#collapseMes{{ forloop.counter }}">
                         <i class="bi bi-calendar-event me-2"></i> {{ mes_group.grouper|capfirst }}
                         <span class="badge bg-primary-subtle text-primary ms-3 rounded-pill">{{ mes_group.list|length }} despesas</span>
                     </button>
                 </h2>
                 
-                <div id="collapseMes{{ forloop.counter }}" 
-                     class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" 
-                     aria-labelledby="heading{{ forloop.counter }}" 
-                     data-bs-parent="#accordionMeses">
-                    
+                <div id="collapseMes{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#accordionMeses">
                     <div class="accordion-body p-0 bg-light">
                         <div class="d-flex flex-column gap-2 p-3">
-                            
                             {% for d in mes_group.list %}
                             <div class="card border shadow-none hover-shadow transition-all bg-white">
                                 <div class="card-body p-0">
                                     <div class="p-3 d-flex align-items-center justify-content-between cursor-pointer" 
-                                         data-bs-toggle="collapse" 
-                                         data-bs-target="#collapseDespesa{{ d.pk }}" 
-                                         aria-expanded="false">
+                                         data-bs-toggle="collapse" data-bs-target="#collapseDespesa{{ d.pk }}">
                                         
                                         <div class="d-flex align-items-center gap-3" style="min-width: 80px;">
                                             <div class="text-center">
@@ -117,6 +104,11 @@
                                                 <span class="badge bg-light text-secondary border fw-normal">{{ d.categoria.nome }}</span>
                                                 {% endif %}
                                                 <span><i class="bi bi-credit-card me-1"></i>{{ d.get_forma_pagamento_display }}</span>
+                                                {% if d.total_parcelas > 1 %}
+                                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                                                    {{ d.parcela_atual }}/{{ d.total_parcelas }}
+                                                </span>
+                                                {% endif %}
                                             </div>
                                         </div>
 
@@ -136,7 +128,6 @@
                                                 <button class="btn btn-sm btn-light border text-danger" data-bs-toggle="modal" data-bs-target="#modalDelete{{ d.pk }}"><i class="bi bi-trash"></i></button>
                                             </div>
                                         </div>
-
                                         {% if d.itens.all %}
                                         <table class="table table-sm table-borderless small mb-0 bg-white rounded">
                                             <thead class="text-muted border-bottom">
@@ -152,15 +143,13 @@
                                                 {% endfor %}
                                             </tbody>
                                         </table>
-                                        {% endif %}
-                                        
-                                        {% if d.observacoes %}
-                                            <div class="small text-muted mt-2 fst-italic">{{ d.observacoes }}</div>
+                                        {% else %}
+                                            <p class="small text-muted mb-0">Nenhum item detalhado.</p>
                                         {% endif %}
                                     </div>
                                 </div>
                             </div>
-
+                            
                             <div class="modal fade" id="modalDelete{{ d.pk }}" tabindex="-1" aria-hidden="true">
                                 <div class="modal-dialog modal-sm modal-dialog-centered">
                                     <div class="modal-content">
@@ -178,12 +167,13 @@
                                     </div>
                                 </div>
                             </div>
-                            {% endfor %} </div>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
-            {% endfor %} </div>
-
+            {% endfor %}
+        </div>
     {% else %}
         <div class="bg-brand-blue-50 rounded p-5 text-center">
             <i class="bi bi-search fs-1 text-brand-blue opacity-50"></i>
@@ -193,5 +183,52 @@
     {% endif %}
 </section>
 
+<div class="modal fade" id="modalNovaDespesa" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-brand-blue-900">Despesa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalDespesaBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Carregando...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalImportar" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-brand-blue text-white">
+                <h5 class="modal-title fw-bold h6"><i class="bi bi-qr-code me-2"></i>Importar NFC-e</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formImportarNF" action="{% url 'despesa_importar_nfe' %}" method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Foto do QR Code</label>
+                        <input type="file" name="imagem" class="form-control" accept="image/*" required>
+                        <div class="form-text">Tire uma foto nítida apenas do QR Code da nota.</div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-brand-green" data-no-loader="true">Ler e Preencher</button>
+                    </div>
+                </form>
+                <div id="loadingImport" class="text-center mt-3 d-none">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span class="ms-2 small">Processando nota...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="{% static 'js/despesa_lista.js' %}"></script>
+<script src="{% static 'js/despesa_form.js' %}"></script>
+
 {% endblock %}

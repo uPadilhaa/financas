@@ -7,50 +7,40 @@
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h4 class="fw-bold mb-0 text-brand-blue-900">Configuração Financeira</h4>
+                            <h4 class="fw-bold mb-0 text-brand-blue-900">Configuração de Renda</h4>
                             <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary">Voltar</a>
                         </div>
 
                         <div class="alert alert-info border-0 bg-brand-blue-50 small">
                             <i class="bi bi-info-circle-fill me-1"></i>
-                            Estes valores serão aplicados automaticamente <strong>todos os meses</strong>.
-                            Para ganhos extras (como 13º), use a tela de "Receitas".
+                            Defina aqui seus ganhos fixos. Metas e limites são configurados no Dashboard.
                         </div>
 
-                        <form method="post">
+                        <form method="post" novalidate>
                             {% csrf_token %}
 
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Renda Mensal Fixa</label>
+                                <label class="form-label fw-semibold">Renda Mensal Fixa <span class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white">R$</span>
                                     {{ form.renda_fixa }}
                                 </div>
+                                <div class="invalid-feedback d-block">{{ form.renda_fixa.errors.0 }}</div>
                                 <div class="form-text">Seu salário líquido ou ganhos recorrentes.</div>
                             </div>
 
-                            <div class="mb-3">
+                            <div class="mb-4">
                                 <label class="form-label fw-semibold text-primary">Investimento Mensal Fixo</label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white">R$</span>
                                     {{ form.investimento_fixo }}
                                 </div>
+                                 <div class="invalid-feedback d-block">{{ form.investimento_fixo.errors.0 }}</div>
                                 <div class="form-text">Valor que você separa todo mês automaticamente.</div>
                             </div>
 
-                            <hr>
-
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold">Teto de Gastos (Meta)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-white">R$</span>
-                                    {{ form.limite_mensal }}
-                                </div>
-                                <div class="form-text">Use para receber alertas visuais quando gastar demais.</div>
-                            </div>
-
                             <div class="d-grid">
-                                <button class="btn btn-brand-green" type="submit">Salvar Configurações</button>
+                                <button class="btn btn-brand-green" type="submit">Salvar Renda</button>
                             </div>
                         </form>
                     </div>
