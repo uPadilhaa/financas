@@ -18,7 +18,7 @@ class Despesa(models.Model):
     parcela_atual = models.IntegerField("Parcela Atual", default=1)
     total_parcelas = models.IntegerField("Total Parcelas", default=1)    
     qtd_total_itens = models.IntegerField("Qtd. Itens", default=0)
-    forma_pagamento = models.CharField("Forma de Pagamento", max_length=20, choices=FormaPagamento.choices, default=FormaPagamento.OUTROS)
+    forma_pagamento = models.CharField("Forma de Pagamento", max_length=20, choices=FormaPagamento.choices)
     tipo = models.CharField("Tipo de Despesa", max_length=10, choices=TipoDespesa.choices, default=TipoDespesa.VARIAVEL)
     data = models.DateField(default=timezone.localdate)
     observacoes = models.TextField(blank=True, null=True)

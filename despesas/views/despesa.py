@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.db.models import Q
 from django.http import JsonResponse
 from dateutil.relativedelta import relativedelta
+from itertools import groupby
 
 from despesas.models import Despesa, Categoria, ItemDespesa
 from despesas.forms import DespesaForm, ItemDespesaFormSet
@@ -38,11 +39,27 @@ def listar_despesa(request):
 
     despesas = despesas.order_by("-data", "-id")
 
+    despesas_agrupadas = []    
+    def get_mes_ano(d):
+        return d.data.strftime('%Y-%m')
+    
+    for key, group in groupby(despesas, key=get_mes_ano):
+        lista_do_mes = list(group)
+        total_do_mes = sum(d.valor for d in lista_do_mes)
+        
+        data_referencia = lista_do_mes[0].data if lista_do_mes else None
+
+        despesas_agrupadas.append({
+            'grouper': data_referencia, 
+            'list': lista_do_mes,       
+            'total': total_do_mes       
+        })
+
     hoje = timezone.localdate()
     anos_disponiveis = despesas.dates('data', 'year', order='DESC')
     
     context = {
-        "despesas": despesas,
+        "despesas_agrupadas": despesas_agrupadas, 
         "opcoes_pagamento": FormaPagamento.choices, 
         "filtro_mes": mes,
         "filtro_ano": ano,
@@ -64,7 +81,7 @@ def criar_despesa(request):
 
     if request.method == "POST":
         form = DespesaForm(request.POST, user=request.user)
-        formset = ItemDespesaFormSet(request.POST)
+        formset = ItemDespesaFormSet(request.POST, prefix="itens")
         
         if form.is_valid() and formset.is_valid():
             try:
@@ -127,13 +144,20 @@ def criar_despesa(request):
                 return JsonResponse({'success': False, 'error': str(e)}, status=500)
         
         else:
-            return render(request, "despesas/despesa_form/main.html", {"form": form, "formset": formset}, status=400)    
+            print("FORM ERRORS:", form.errors, form.non_field_errors())
+            print("FORMSET ERRORS:", formset.errors, formset.non_form_errors())
+
+            return render(
+                request,
+                "despesas/despesa_form/main.html",
+                {"form": form, "formset": formset},
+                status=400,
+            ) 
     else:
         form = DespesaForm(user=request.user, initial={"data": timezone.localdate()})
-        formset = ItemDespesaFormSet(queryset=ItemDespesa.objects.none())
-        if formset.total_form_count() == 0: 
-            formset.extra = 1
+        formset = ItemDespesaFormSet(queryset=ItemDespesa.objects.none(), prefix="itens",)
         return render(request, "despesas/despesa_form/main.html", {"form": form, "formset": formset})
+
 
 @login_required
 def editar_despesa(request, pk: int):
@@ -141,7 +165,7 @@ def editar_despesa(request, pk: int):
 
     if request.method == "POST":
         form = DespesaForm(request.POST, instance=despesa, user=request.user)
-        formset = ItemDespesaFormSet(request.POST, instance=despesa)
+        formset = ItemDespesaFormSet(request.POST, instance=despesa, prefix="itens")
         
         if form.is_valid() and formset.is_valid():
             with transaction.atomic():
@@ -156,7 +180,7 @@ def editar_despesa(request, pk: int):
             return redirect("listar_despesa")
     else:
         form = DespesaForm(instance=despesa, user=request.user)
-        formset = ItemDespesaFormSet(instance=despesa)
+        formset = ItemDespesaFormSet(instance=despesa, prefix="itens")
 
     return render(request, "despesas/despesa_form/despesa_form.html", {
         "form": form, 

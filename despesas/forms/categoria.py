@@ -2,6 +2,7 @@ from django import forms
 from django.utils.text import slugify
 from despesas.models import Categoria
 
+
 class CategoriaForm(forms.ModelForm):
     orcamento_mensal = forms.DecimalField(
         label="Orçamento Mensal (Meta)",

@@ -7,7 +7,7 @@
     {% if not form.instance.pk %}
     <div class="d-flex justify-content-end mb-3">
         <button type="button" class="btn btn-sm btn-outline-primary" onclick="if(window.abrirModalImportacao) { window.abrirModalImportacao(); } else { window.abrirModalImportacaoStandalone(); }">
-            <i class="bi bi-qr-code me-1"></i> Importar NFC-e
+            <i class="bi bi-qr-code me-1"></i> Importar NF-e
         </button>
     </div>
     {% endif %}
@@ -36,7 +36,14 @@
             <label class="form-label text-muted small text-uppercase fw-bold">Categoria <span class="text-danger">*</span></label>
             {{ form.categoria }}
             <div class="invalid-feedback d-block">{{ form.categoria.errors.0 }}</div>
+            <div class="small mt-1 text-muted">
+                Não achou? 
+                <span class="text-primary text-decoration-underline" style="cursor: pointer;" onclick="abrirModalNovaCategoria()">
+                    Criar nova
+                </span>
+            </div>
         </div>
+        
         <div class="col-md-4">
             <label class="form-label text-muted small text-uppercase fw-bold">Tipo de Despesa <span class="text-danger">*</span></label>
             {{ form.tipo }}
@@ -99,6 +106,27 @@
             </table>
         </div>
         
+        <div id="empty-form" class="d-none">
+            <table class="d-none">
+                <tr class="item-row">
+                    {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                    <td class="ps-3">
+                        {{ formset.empty_form.nome }}
+                    </td>
+                    <td>
+                        {{ formset.empty_form.quantidade }}
+                    </td>
+                    <td>
+                        {{ formset.empty_form.valor_unitario }}
+                    </td>
+                    <td>{{ formset.empty_form.valor_total }}</td>
+                    <td class="text-center">
+                        <div class="form-check d-inline-block">{{ formset.empty_form.DELETE }}</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
         <button type="button" id="add-item-btn" class="btn btn-sm btn-link text-decoration-none ps-0 mt-1">
             <i class="bi bi-plus-lg me-1"></i> Adicionar item
         </button>
@@ -125,7 +153,7 @@
             </div>
 
             <div class="col-6 col-md-3">
-                <label class="form-label small text-muted mb-1 fw-bold">Data <span class="text-danger">*</span> {% if not form.instance.pk %}1ª Parc.{% endif %}</label>
+                <label class="form-label small text-muted mb-1 fw-bold">Data 1ª Parc.<span class="text-danger">*</span></label>
                 {{ form.data }}
                  <div class="invalid-feedback d-block">{{ form.data.errors.0 }}</div>
             </div>
@@ -157,3 +185,37 @@
         {% endif %}
     </div>
 </form>
+
+<div class="modal fade" id="modalNovaCategoriaRapida" tabindex="-1" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content shadow">
+            <div class="modal-header py-2 bg-light">
+                <h6 class="modal-title fw-bold">Nova Categoria</h6>
+                <button type="button" class="btn-close btn-sm" onclick="fecharModalNovaCategoria()"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNovaCategoriaRapida" action="{% url 'categoria_criar' %}" method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold mb-1">Nome <span class="text-danger">*</span></label>
+                        <input type="text" name="nome" class="form-control form-control-sm" placeholder="Ex: Lazer" required>
+                        <div id="error-cat-nome" class="text-danger small mt-1" style="display:none;"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold mb-1">Orçamento Mensal</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text">R$</span>
+                            <input type="text" name="orcamento_mensal" class="form-control" placeholder="0,00">
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-sm btn-brand-green">Criar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

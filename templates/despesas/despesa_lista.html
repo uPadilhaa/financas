@@ -67,17 +67,32 @@
     {% endfor %}
     {% endif %}
 
-    {% if despesas %}
-        {% regroup despesas by data|date:"F Y" as despesas_por_mes %}
+    {% if despesas_agrupadas %}
+        
         <div class="accordion" id="accordionMeses">
-            {% for mes_group in despesas_por_mes %}
+            {% for mes_group in despesas_agrupadas %}
             <div class="accordion-item border-0 shadow-sm mb-3 overflow-hidden rounded">
+                
                 <h2 class="accordion-header" id="heading{{ forloop.counter }}">
                     <button class="accordion-button fw-bold text-brand-blue-900 {% if not forloop.first %}collapsed{% endif %}" 
                             type="button" data-bs-toggle="collapse" 
                             data-bs-target="#collapseMes{{ forloop.counter }}">
-                        <i class="bi bi-calendar-event me-2"></i> {{ mes_group.grouper|capfirst }}
-                        <span class="badge bg-primary-subtle text-primary ms-3 rounded-pill">{{ mes_group.list|length }} despesas</span>
+                        
+                        <div class="d-flex w-100 justify-content-between align-items-center me-3">
+                            <div>
+                                <i class="bi bi-calendar-event me-2"></i> {{ mes_group.grouper|date:"F Y"|capfirst }}
+                            </div>
+                            
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill fw-normal">
+                                    {{ mes_group.list|length }} despesas
+                                </span>
+                                <span class="badge bg-danger-subtle text-danger rounded-pill fs-6 border border-danger-subtle">
+                                    R$ {{ mes_group.total|floatformat:2 }}
+                                </span>
+                            </div>
+                        </div>
+
                     </button>
                 </h2>
                 
@@ -85,6 +100,7 @@
                     <div class="accordion-body p-0 bg-light">
                         <div class="d-flex flex-column gap-2 p-3">
                             {% for d in mes_group.list %}
+                            
                             <div class="card border shadow-none hover-shadow transition-all bg-white">
                                 <div class="card-body p-0">
                                     <div class="p-3 d-flex align-items-center justify-content-between cursor-pointer" 
@@ -113,38 +129,49 @@
                                         </div>
 
                                         <div class="text-end ps-2">
-                                            <div class="fs-6 fw-bold text-success">R$ {{ d.valor|floatformat:2 }}</div>
+                                            <div class="fs-6 fw-bold text-danger">R$ {{ d.valor|floatformat:2 }}</div>
                                             <div class="small text-muted"><i class="bi bi-chevron-down"></i></div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="collapse border-top bg-secondary-subtle bg-opacity-10" id="collapseDespesa{{ d.pk }}">
+                                <div class="collapse border-top bg-white" id="collapseDespesa{{ d.pk }}">
                                     <div class="p-3">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span class="small fw-bold text-uppercase text-muted">Detalhes</span>
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <span class="small fw-bold text-uppercase text-muted">Itens da Nota</span>
                                             <div class="btn-group">
-                                                <a href="{% url 'despesa_editar' d.pk %}" class="btn btn-sm btn-light border"><i class="bi bi-pencil"></i></a>
-                                                <button class="btn btn-sm btn-light border text-danger" data-bs-toggle="modal" data-bs-target="#modalDelete{{ d.pk }}"><i class="bi bi-trash"></i></button>
+                                                <a href="{% url 'despesa_editar' d.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
+                                                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalDelete{{ d.pk }}" title="Excluir"><i class="bi bi-trash"></i></button>
                                             </div>
                                         </div>
+
                                         {% if d.itens.all %}
-                                        <table class="table table-sm table-borderless small mb-0 bg-white rounded">
-                                            <thead class="text-muted border-bottom">
-                                                <tr><th class="ps-2">Item</th><th class="text-center">Qtd</th><th class="text-end pe-2">Total</th></tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for item in d.itens.all %}
-                                                <tr>
-                                                    <td class="ps-2">{{ item.nome }}</td>
-                                                    <td class="text-center">{{ item.quantidade|floatformat:0 }}</td>
-                                                    <td class="text-end pe-2 fw-semibold">R$ {{ item.valor_total|floatformat:2 }}</td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered table-striped table-hover table-sm small mb-0">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th class="ps-2 align-middle">Item / Produto</th>
+                                                        <th class="text-center align-middle" style="width: 80px;">Qtd</th>
+                                                        <th class="text-end pe-2 align-middle" style="width: 120px;">Total (R$)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for item in d.itens.all %}
+                                                    <tr>
+                                                        <td class="ps-2 align-middle">{{ item.nome }}</td>
+                                                        <td class="text-center align-middle">{{ item.quantidade|floatformat:0 }}</td>
+                                                        <td class="text-end pe-2 align-middle fw-semibold text-danger">
+                                                            {{ item.valor_total|floatformat:2 }}
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                         {% else %}
-                                            <p class="small text-muted mb-0">Nenhum item detalhado.</p>
+                                            <div class="text-center py-3 text-muted bg-light rounded border border-dashed">
+                                                <small>Nenhum item detalhado para esta despesa.</small>
+                                            </div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -174,6 +201,7 @@
             </div>
             {% endfor %}
         </div>
+
     {% else %}
         <div class="bg-brand-blue-50 rounded p-5 text-center">
             <i class="bi bi-search fs-1 text-brand-blue opacity-50"></i>
@@ -211,9 +239,9 @@
                 <form id="formImportarNF" action="{% url 'despesa_importar_nfe' %}" method="post" enctype="multipart/form-data">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Foto do QR Code</label>
-                        <input type="file" name="imagem" class="form-control" accept="image/*" required>
-                        <div class="form-text">Tire uma foto nítida apenas do QR Code da nota.</div>
+                        <label class="form-label fw-bold">Foto do QR Code ou PDF da NF-e</label>
+                        <input type="file" name="imagem" class="form-control" accept="image/*,application/pdf" required>
+                        <div class="form-text">Envie uma foto do QR Code ou o arquivo PDF da nota.</div>
                     </div>
                     <div class="d-grid">
                         <button type="submit" class="btn btn-brand-green" data-no-loader="true">Ler e Preencher</button>
