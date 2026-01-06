@@ -5,4 +5,4 @@ class DespesasConfig(AppConfig):
     name = "despesas"
 
     def ready(self):
-        from . import sync
+        import despesas.signals  

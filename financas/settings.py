@@ -22,6 +22,10 @@ TIME_ZONE = "America/Sao_Paulo"
 USE_I18N = True
 USE_TZ = True
 
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "BpCash <nao-responda@bpcash.local>"
+
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

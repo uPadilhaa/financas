@@ -2,301 +2,173 @@
 {% load static %}
 
 {% block content %}
-<style>
-  body {
-    font-family: "Orev Edge", system-ui, -apple-system, "Segoe UI", sans-serif;
-  }
-  .card-stat {
-    background: #fff;
-    border-radius: 20px;
-  }
-  .chart-container {
-    min-height: 220px;
-  }
-  .text-xs {
-    font-size: .75rem;
-  }
-  .text-sm {
-    font-size: .875rem;
-  }
-  .btn-outline-success {
-    --bs-btn-color: var(--brand-green);
-    --bs-btn-border-color: var(--brand-green);
-    --bs-btn-hover-bg: var(--brand-green);
-    --bs-btn-hover-border-color: var(--brand-green);
-    --bs-btn-hover-color: #fff;
-  }
-</style>
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
-<div class="bg-brand-blue-50 min-vh-100 py-4">
-  <div class="container">
+<div class="py-4 dashboard-page">
+  <div class="container-fluid px-lg-5">
 
     <!-- Cabeçalho -->
-    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4 gap-3">
       <div>
         <h1 class="h4 fw-bold mb-1 text-brand-blue-900">Visão geral</h1>
-        <p class="text-muted mb-0 text-sm">
-          Resumo financeiro de <span class="fw-semibold">{{ hoje|date:"F \d\e Y" }}</span>
+        <p class="text-muted small mb-0">
+          Visão consolidada de {{ data_referencia|date:"F/Y" }}
         </p>
       </div>
-      <div class="d-flex align-items-center gap-2">
-        <button type="button"
-                class="btn btn-light shadow-xs rounded-pill d-flex align-items-center gap-2 border-0"
-                data-bs-toggle="modal" data-bs-target="#modalLimites">
-          <span class="badge rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center"
-                style="width: 26px; height: 26px;">
-            <i class="bi bi-bell-fill"></i>
-          </span>
-          <span class="fw-semibold text-sm">Alerta</span>
-        </button>
+
+      <div class="d-flex flex-column align-items-stretch align-items-lg-end gap-2">
+
+        <!-- ALERTA ACIMA -->
+        <div class="d-flex justify-content-lg-end">
+          <button type="button"
+                  class="btn btn-outline-light bg-white text-brand-blue-900 d-flex align-items-center gap-2"
+                  data-bs-toggle="modal" data-bs-target="#modalLimites">
+            <i class="bi bi-bell-fill text-warning"></i>
+            <span>Alerta</span>
+          </button>
+        </div>
+
+        <!-- BOTÕES DE MÊS ABAIXO -->
+        <div class="btn-group btn-group-sm shadow-sm" role="group" aria-label="Mês">
+            <a href="{% url 'dashboard' %}?scope=anterior{% if periodo_filtro %}&range={{ periodo_filtro }}{% endif %}"
+                class="btn btn-outline-light bg-white text-brand-blue-900 {% if escopo_mes == 'anterior' %}active{% endif %}">
+                Mês anterior
+            </a>
+            <a href="{% url 'dashboard' %}?scope=atual{% if periodo_filtro %}&range={{ periodo_filtro }}{% endif %}"
+                class="btn btn-outline-light bg-white text-brand-blue-900 {% if escopo_mes == 'atual' %}active{% endif %}">
+                Mês atual
+            </a>
+            <a href="{% url 'dashboard' %}?scope=proximo{% if periodo_filtro %}&range={{ periodo_filtro }}{% endif %}"
+                class="btn btn-outline-light bg-white text-brand-blue-900 {% if escopo_mes == 'proximo' %}active{% endif %}">
+                Próximo mês
+            </a>
+        </div>
+
       </div>
     </div>
 
-    <!-- KPIs principais -->
-    <div class="row g-3 mb-4">
-      <!-- Entradas -->
-      <div class="col-12 col-md-4 col-xl-3">
-        <div class="card card-stat h-100 shadow-xs border-0 rounded-4">
-          <div class="card-body">
-            <p class="text-uppercase text-xs fw-bold mb-1 text-brand-green">Entradas</p>
-            <h4 class="fw-bold mb-0 text-dark">
-              R$ {{ entradas_totais|floatformat:2 }}
-            </h4>
-            <p class="text-xs text-muted mb-3">Renda fixa + receitas extras do mês.</p>
-            <div class="d-flex flex-column gap-1 text-xs">
-              <div class="d-flex justify-content-between">
-                <span class="text-muted">Fixas</span>
-                <span class="fw-semibold text-brand-green">
-                  R$ {{ renda_fixa|floatformat:2 }}
-                </span>
-              </div>
-              <div class="d-flex justify-content-between">
-                <span class="text-muted">Extras</span>
-                <span class="fw-semibold text-brand-green">
-                  R$ {{ renda_extra|floatformat:2 }}
-                </span>
-              </div>
-            </div>
-            <div class="d-flex justify-content-end mt-3">
-              <a href="{% url 'listar_receitas' %}"
-                 class="btn btn-sm btn-outline-success rounded-pill px-3">
-                Ver entradas
-              </a>
-            </div>
+    <div class="dashboard-container">
+      <!-- Sidebar com KPIs -->
+      <aside class="kpi-sidebar">
+        <div class="kpi-card-vertical theme-income">
+          <i class="bi bi-wallet2 kpi-icon-overlay"></i>
+          <div class="kpi-label-v">Total Entradas</div>
+          <div class="kpi-value-v">R$ {{ entradas_totais|floatformat:2 }}</div>
+          <div class="kpi-subtext-v">
+            {% if renda_extra > 0 %}+ R$ {{ renda_extra|floatformat:0 }} extras{% else %}Apenas fixo{% endif %}
           </div>
         </div>
-      </div>
 
-      <!-- Saídas -->
-      <div class="col-12 col-md-4 col-xl-3">
-        <div class="card card-stat h-100 shadow-xs border-0 rounded-4">
-          <div class="card-body">
-            <p class="text-uppercase text-xs fw-bold mb-1 text-danger">Saídas</p>
-            <h4 class="fw-bold mb-0 text-danger">
-              R$ {{ saidas_totais|floatformat:2 }}
-            </h4>
-            <p class="text-xs text-muted mb-2">Todas as despesas registradas no mês.</p>
-
-            <!-- Tendência vs mês anterior -->
-            {% if tendencia_gastos != 'sem_base' %}
-            <div class="d-flex align-items-center gap-2 mb-2">
-              {% if tendencia_gastos == 'aumento' %}
-                <span class="badge bg-danger-subtle text-danger rounded-pill text-xs">
-                  <i class="bi bi-arrow-up-right me-1"></i>
-                  +{{ pct_diff_gastos|floatformat:1 }}% vs mês anterior
-                </span>
-              {% elif tendencia_gastos == 'queda' %}
-                <span class="badge bg-success-subtle text-brand-green rounded-pill text-xs">
-                  <i class="bi bi-arrow-down-right me-1"></i>
-                  {{ pct_diff_gastos|floatformat:1 }}% vs mês anterior
-                </span>
-              {% else %}
-                <span class="badge bg-secondary-subtle text-secondary rounded-pill text-xs">
-                  <i class="bi bi-arrow-right me-1"></i>
-                  Estável vs mês anterior
-                </span>
-              {% endif %}
-            </div>
-            {% endif %}
-
-            <!-- Lançamentos futuros dentro de Saídas -->
-            <div class="text-xs text-muted">
-              Lançamentos futuros:
-              <span class="fw-semibold text-danger">
-                R$ {{ lancamentos_futuros|floatformat:2 }}
-              </span>
-              <a href="{% url 'listar_despesa' %}?futuro=1"
-                 class="ms-1 text-decoration-none text-brand-blue-700">
-                Ver detalhes
-              </a>
-            </div>
-
-            <div class="d-flex justify-content-end mt-3">
-              <a href="{% url 'listar_despesa' %}?mes={{ hoje|date:'m' }}&ano={{ hoje|date:'Y' }}"
-                 class="btn btn-sm btn-outline-danger rounded-pill px-3">
-                Ver saídas
-              </a>
-            </div>
-          </div>
+        <div class="kpi-card-vertical theme-expense">
+          <i class="bi bi-cart4 kpi-icon-overlay"></i>
+          <div class="kpi-label-v">Total Saídas</div>
+          <div class="kpi-value-v">R$ {{ saidas_totais|floatformat:2 }}</div>
+          <div class="kpi-subtext-v">Mês selecionado</div>
         </div>
-      </div>
 
-      <!-- Investimentos & saldo -->
-      <div class="col-12 col-md-4 col-xl-3">
-        <div class="card card-stat h-100 shadow-xs border-0 rounded-4">
-          <div class="card-body">
-            <p class="text-uppercase text-xs fw-bold mb-1 text-brand-blue-700">
-              Investimentos &amp; saldo
-            </p>
-            <h4 class="fw-bold mb-0 text-brand-blue-900">
-              R$ {{ investimentos_totais|floatformat:2 }}
-            </h4>
-            <p class="text-xs text-muted mb-3">Total investido no mês.</p>
-
-            <div class="mb-2 text-xs">
-              <div class="d-flex justify-content-between">
-                <span class="text-muted">Saldo disponível</span>
-                <span class="fw-semibold {% if saldo >= 0 %}text-brand-green{% else %}text-danger{% endif %}">
-                  R$ {{ saldo|floatformat:2 }}
-                </span>
-              </div>
-            </div>
-
-            <div class="progress bg-light rounded-pill" style="height: 8px;">
-              <div class="progress-bar"
-                   role="progressbar"
-                   style="width: {{ pct_orcamento_livre|floatformat:0 }}%; background: linear-gradient(90deg, #78f07e, #4552f5);"
-                   aria-valuemin="0" aria-valuemax="100">
-              </div>
-            </div>
-            <div class="d-flex justify-content-between mt-2 text-xs text-muted">
-              <span>Gasto este mês:</span>
-              <span class="fw-semibold">
-                {{ pct_orcamento|floatformat:1 }}% do valor livre
-              </span>
-            </div>
-          </div>
+        <div class="kpi-card-vertical theme-invest">
+          <i class="bi bi-graph-up-arrow kpi-icon-overlay"></i>
+          <div class="kpi-label-v">Investimentos</div>
+          <div class="kpi-value-v">R$ {{ investimentos_totais|floatformat:2 }}</div>
+          <div class="kpi-subtext-v">Total acumulado no mês</div>
         </div>
-      </div>
 
-      <!-- Bloco de alerta arredondado -->
-      <div class="col-12 col-md-6 col-xl-3">
-        <button type="button"
-                class="card card-stat h-100 w-100 shadow-xs border-0 rounded-4 text-start p-0"
-                data-bs-toggle="modal" data-bs-target="#modalLimites">
-          <div class="card-body d-flex align-items-center justify-content-between">
-            <div class="pe-3">
-              <p class="text-uppercase text-xs fw-bold mb-1 text-warning">Alerta de gastos</p>
-              <p class="mb-0 text-xs text-muted">
-                Receba um e-mail quando as saídas atingirem o limite configurado.
-              </p>
-            </div>
-            <div class="flex-shrink-0">
-              <span class="d-inline-flex align-items-center justify-content-center bg-warning-subtle text-warning rounded-circle"
-                    style="width: 40px; height: 40px;">
-                <i class="bi bi-gear-fill"></i>
-              </span>
-            </div>
+        <div class="kpi-card-vertical theme-balance">
+          <i class="bi bi-bank kpi-icon-overlay"></i>
+          <div class="kpi-label-v">Saldo Disponível</div>
+          <div class="kpi-value-v {% if saldo < 0 %}text-danger{% endif %}">
+            R$ {{ saldo|floatformat:2 }}
           </div>
-        </button>
-      </div>
+          <div class="kpi-subtext-v">Em caixa</div>
+        </div>
+
+        <div class="kpi-card-vertical" style="background: #475569; border-left-color: #cbd5e1;">
+          <i class="bi bi-calendar-event kpi-icon-overlay"></i>
+          <div class="kpi-label-v">Lançamentos Futuros</div>
+          <div class="kpi-value-v">R$ {{ lancamentos_futuros|floatformat:2 }}</div>
+          <div class="kpi-subtext-v">A vencer nos próximos meses</div>
+        </div>
+      </aside>
+
+      <!-- Área de gráficos -->
+      <main class="charts-area">
+
+        <!-- Linha com evolução + investimentos x despesas % -->
+        <div class="row g-3 mb-3">
+            <div class="col-xl-7">
+            <div class="chart-card h-100">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+                <div>
+                    <h5 class="chart-title mb-0">Evolução de Despesas</h5>
+                    <span class="text-muted small">{{ titulo_evo }}</span>
+                </div>
+                <div class="d-flex justify-content-start justify-content-md-end">
+                    <div class="btn-group btn-group-filter" role="group" aria-label="Intervalo de meses">
+                    <a href="?range=6m{% if escopo_mes != 'atual' %}&scope={{ escopo_mes }}{% endif %}"
+                        class="btn btn-outline-secondary {% if periodo_filtro == '6m' %}active{% endif %}">
+                        6 meses
+                    </a>
+                    <a href="?range=12m{% if escopo_mes != 'atual' %}&scope={{ escopo_mes }}{% endif %}"
+                      class="btn btn-outline-secondary {% if periodo_filtro == '12m' %}active{% endif %}">
+                        1 ano
+                    </a>
+
+                    <a href="?range=future{% if escopo_mes != 'atual' %}&scope={{ escopo_mes }}{% endif %}"
+                        class="btn btn-outline-secondary {% if periodo_filtro == 'future' %}active{% endif %}">
+                        Futuro
+                    </a>
+                    </div>
+                </div>
+                </div>
+                <div id="chart-evo" class="chart-container"></div>
+            </div>
+            </div>
+
+            <div class="col-xl-5">
+            <div class="chart-card h-100">
+                <h5 class="chart-title mb-0">Investimentos x Despesas (%)</h5>
+                <p class="text-muted small mb-3">Proporção sobre o total de cada mês</p>
+                <div id="chart-invest-desp" class="chart-container"></div>
+            </div>
+            </div>
+        </div>
+
+        <!-- Linha de gráficos menores -->
+        <div class="row g-3">
+            <div class="col-lg-4">
+            <div class="chart-card h-100">
+                <h5 class="chart-title mb-3">Distribuição (Categorias)</h5>
+                <div id="chart-pizza" class="chart-container"></div>
+            </div>
+            </div>
+            <div class="col-lg-4">
+            <div class="chart-card h-100">
+                <h5 class="chart-title mb-1">Top 5 Maiores Gastos</h5>
+                <p class="text-muted small mb-3">Últimos 12 meses</p>
+                <div id="chart-top5" class="chart-container"></div>
+            </div>
+            </div>
+            <div class="col-lg-4">
+            <div class="chart-card h-100">
+                <h5 class="chart-title mb-3">Orçado vs Realizado</h5>
+                <div id="chart-orc" class="chart-container"></div>
+            </div>
+            </div>
+        </div>
+
+      </main>
     </div>
-
-    <!-- Evolução mensal (foco principal) -->
-    <div class="row g-4 mb-4">
-      <div class="col-12">
-        <div class="card shadow-xs border-0 rounded-4">
-          <div class="card-body">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-              <div>
-                <h6 class="fw-bold mb-1 text-dark">
-                  Evolução mensal (Entradas x Saídas x Investimentos)
-                </h6>
-                <p class="text-xs text-muted mb-0">
-                  Acompanhe, mês a mês, como sua saúde financeira está se comportando ao longo do ano.
-                </p>
-              </div>
-            </div>
-            <div id="chart-comp" class="chart-container"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Gráficos secundários -->
-    <div class="row g-4">
-      <!-- Donut de categorias -->
-      <div class="col-12 col-lg-4">
-        <div class="card shadow-xs border-0 rounded-4 h-100">
-          <div class="card-body">
-            <h6 class="fw-bold mb-1 text-dark">Gastos do mês por categoria</h6>
-            <p class="text-xs text-muted mb-3">
-              Distribuição das saídas do mês nas principais categorias.
-            </p>
-            <div id="chart-pizza" class="chart-container"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Top 5 categorias -->
-      <div class="col-12 col-lg-4">
-        <div class="card shadow-xs border-0 rounded-4 h-100">
-          <div class="card-body">
-            <h6 class="fw-bold mb-1 text-dark">Top 5 categorias do mês</h6>
-            <p class="text-xs text-muted mb-3">
-              As categorias onde você mais gastou no período.
-            </p>
-            <div id="chart-top5" class="chart-container"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Dia da semana -->
-      <div class="col-12 col-lg-4">
-        <div class="card shadow-xs border-0 rounded-4 h-100">
-          <div class="card-body">
-            <h6 class="fw-bold mb-1 text-dark">Gastos por dia da semana</h6>
-            <p class="text-xs text-muted mb-3">
-              Em quais dias você costuma gastar mais.
-            </p>
-            <div id="chart-semana" class="chart-container"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Orçado x realizado -->
-    <div class="row g-4 mt-1">
-      <div class="col-12">
-        <div class="card shadow-xs border-0 rounded-4">
-          <div class="card-body">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-              <div>
-                <h6 class="fw-bold mb-1 text-dark">Orçado x realizado por categoria</h6>
-                <p class="text-xs text-muted mb-0">
-                  Compare o que foi definido como limite com o que já foi gasto neste mês.
-                </p>
-              </div>
-            </div>
-            <div id="chart-orc" class="chart-container"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
 
-<!-- JSON com os dados dos gráficos -->
-<script id="d-comparativo" type="application/json">{{ graficos.comparativo|safe }}</script>
-<script id="d-pizza_mes" type="application/json">{{ graficos.pizza_mes|safe }}</script>
-<script id="d-top5_cat" type="application/json">{{ graficos.top5_cat|safe }}</script>
-<script id="d-dia_semana" type="application/json">{{ graficos.dia_semana|safe }}</script>
-<script id="d-orcado_realizado" type="application/json">{{ graficos.orcado_realizado|safe }}</script>
-
+{% if graficos %}
+<script id="d-evo" type="application/json">{{ graficos.evolucao_despesas|safe }}</script>
+<script id="d-invest-desp" type="application/json">{{ graficos.invest_despesas_pct|safe }}</script>
+<script id="d-pizza" type="application/json">{{ graficos.pizza_mes|safe }}</script>
+<script id="d-top5" type="application/json">{{ graficos.top5_cat|safe }}</script>
+<script id="d-orc" type="application/json">{{ graficos.orcado_realizado|safe }}</script>
 <script src="{% static 'js/dashboard.js' %}"></script>
-
+{% endif %}
 {% include "includes/modal_limites.html" %}
-
 {% endblock %}
