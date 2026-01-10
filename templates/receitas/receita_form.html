@@ -1,69 +1,74 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block content %}
+<link href="{% static 'css/pages/receitas.css' %}" rel="stylesheet">
+
 <section class="py-5">
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-md-8 col-lg-6">
-                <div class="card border-0 shadow-sm">
-                    <div class="card-body p-4">
-
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h4 class="fw-bold mb-0 text-brand-blue-900">
-                                {% if edicao %}Editar Renda{% else %}Nova Renda{% endif %}
-                            </h4>
-                            <a href="{% url 'listar_receitas' %}" class="btn btn-sm btn-outline-secondary">Voltar</a>
+            <div class="col-md-6 col-lg-5">
+                
+                <div class="card shadow border-0 overflow-hidden">
+                    <div class="card-header bg-white border-bottom py-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="bg-success-subtle text-success rounded p-2 d-flex">
+                                <i class="bi bi-cash-coin"></i>
+                            </div>
+                            <h5 class="h6 fw-bold text-brand-blue-900 mb-0">
+                                {% if edicao %}Editar Renda Extra{% else %}Nova Renda Extra{% endif %}
+                            </h5>
                         </div>
+                    </div>
 
-                        <form method="post" novalidate>
+                    <div class="card-body p-4">
+                        <form method="post" novalidate class="form-validacao-receita" id="formReceita">
                             {% csrf_token %}
 
                             <div class="mb-3">
-                                <label class="form-label">Descrição <span class="text-danger">*</span></label>
-                                {{ form.descricao }}
+                                <label class="form-label fw-bold small text-muted text-uppercase">Descrição <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-card-text"></i></span>
+                                    {{ form.descricao }}
+                                </div>
                                 <div class="invalid-feedback d-block">{{ form.descricao.errors.0 }}</div>
                             </div>
 
-                            <div class="row g-3 mb-3">
-                                <div class="col-md-6">
-                                    <label class="form-label text-success fw-semibold">Valor Bruto (Recebido) <span class="text-danger">*</span></label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white">R$</span>
-                                        {{ form.valor_bruto }}
-                                    </div>
-                                    <div class="invalid-feedback d-block">{{ form.valor_bruto.errors.0 }}</div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small text-muted text-uppercase">Valor Recebido <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-success text-white border-success">R$</span>
+                                    {{ form.valor_bruto }}
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-primary fw-semibold">Investir / Separar</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white">R$</span>
-                                        {{ form.valor_investimento }}
-                                    </div>
-                                    <div class="form-text small">Valor que não será usado para gastos.</div>
-                                </div>
+                                <div class="invalid-feedback d-block">{{ form.valor_bruto.errors.0 }}</div>
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label">Mês de Referência <span class="text-danger">*</span></label>
+                                <label class="form-label fw-bold small text-muted text-uppercase">Data do Recebimento <span class="text-danger">*</span></label>
                                 {{ form.data }}
                                 <div class="invalid-feedback d-block">{{ form.data.errors.0 }}</div>
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label">Observações</label>
+                                <label class="form-label fw-bold small text-muted text-uppercase">Observações</label>
                                 {{ form.observacoes }}
                             </div>
 
-                            <div class="d-grid gap-2">
-                                <button class="btn btn-brand-green py-2" type="submit">
+                            <div class="d-grid gap-2 pt-2">
+                                <button class="btn btn-brand-green fw-bold py-2 shadow-sm" type="submit">
+                                    <i class="bi bi-check-lg me-1"></i>
                                     {% if edicao %}Salvar Alterações{% else %}Registrar Renda{% endif %}
                                 </button>
+                                <a href="{% url 'listar_receitas' %}" class="btn btn-light text-muted border py-2">Cancelar</a>
                             </div>
                         </form>
-
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
 </section>
+
+<script src="{% static 'js/receitas.js' %}"></script>
 {% endblock %}

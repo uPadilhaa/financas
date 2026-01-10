@@ -1,7 +1,129 @@
 window.inicializarScriptsFormulario = function() {
     removerLinhaExtraVazia();
+    verificarParcelas(); 
     atualizarTotalGeral();
+    conectarFormularioCategoria();
 };
+
+function conectarFormularioCategoria() {
+    const formCat = document.getElementById('formNovaCategoriaRapida');
+    const btnFechar = document.getElementById('btnFecharModalCategoria');
+
+    if (!formCat || formCat.dataset.connected === "true") return;
+
+    formCat.dataset.connected = "true";
+
+    if(btnFechar) btnFechar.onclick = window.fecharModalNovaCategoria;
+
+    formCat.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const btn = formCat.querySelector('button[type="submit"]');
+        const inputNome = formCat.querySelector('input[name="nome"]');
+        const feedbackNome = document.getElementById('feedback-cat-nome');
+        const errorDivOld = document.getElementById('error-cat-nome');
+        
+        const textoOriginal = btn ? btn.innerHTML : 'Criar';
+        if(btn) {
+            btn.dataset.originalText = textoOriginal;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Salvando...';
+        }
+        
+        if(inputNome) inputNome.classList.remove('is-invalid');
+        if(feedbackNome) feedbackNome.textContent = '';
+        if(errorDivOld) errorDivOld.style.display = 'none';
+
+        const formData = new FormData(formCat);
+
+        fetch(formCat.action, {
+            method: 'POST',
+            body: formData,
+            headers: { 
+                "X-Requested-With": "XMLHttpRequest" 
+            }
+        })
+        .then(async response => {
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Resposta do servidor não é JSON.");
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const selectCat = document.getElementById('id_categoria');
+                if (selectCat) {
+                    const newOption = new Option(data.nome, data.id, true, true);
+                    selectCat.add(newOption, undefined);
+                    selectCat.dispatchEvent(new Event('change'));
+                }
+                
+                formCat.reset();
+                window.fecharModalNovaCategoria();
+                
+            } else {
+                if (data.errors && data.errors.nome) {
+                    if(inputNome) inputNome.classList.add('is-invalid');
+                    
+                    const msgErro = data.errors.nome[0];
+                    if(feedbackNome) {
+                        feedbackNome.textContent = msgErro;
+                        feedbackNome.style.display = 'block';
+                    } else if (errorDivOld) {
+                        errorDivOld.textContent = msgErro;
+                        errorDivOld.style.display = 'block';
+                    }
+                } else {
+                    alert('Erro ao criar categoria. Verifique os dados.');
+                }
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erro de conexão ou erro interno do servidor.');
+        })
+        .finally(() => {
+            if(btn) {
+                btn.disabled = false;
+                btn.innerHTML = btn.dataset.originalText || 'Criar';
+            }
+        });
+    });
+}
+
+window.abrirModalNovaCategoria = function() {
+    const modalEl = document.getElementById('modalNovaCategoriaRapida');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        
+        conectarFormularioCategoria(); 
+        
+        setTimeout(() => {
+            const input = modalEl.querySelector('input[name="nome"]');
+            if(input) input.focus();
+        }, 500);
+    }
+};
+
+window.fecharModalNovaCategoria = function() {
+    const modalEl = document.getElementById('modalNovaCategoriaRapida');
+    let modalInstance = bootstrap.Modal.getInstance(modalEl);
+    if(!modalInstance) modalInstance = new bootstrap.Modal(modalEl);
+    
+    if (modalInstance) modalInstance.hide();
+};
+
+function verificarParcelas() {
+    const campoParcelas = document.getElementById('id_parcelas_selecao');
+
+    if (campoParcelas) {
+        campoParcelas.disabled = false;
+        campoParcelas.readOnly = false;
+        campoParcelas.removeAttribute('disabled');
+    }
+}
 
 function removerLinhaExtraVazia() {
     const formTable = document.getElementById('itens-body');
@@ -43,8 +165,10 @@ function calcularLinha(row) {
     const qtdInput = row.querySelector('.item-qtd');
     const unitInput = row.querySelector('.item-unit');
     const totalInputItem = row.querySelector('.item-total');
-    const deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');    
-    if (!qtdInput || !unitInput || !totalInputItem) return 0;    
+    const deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');        
+    
+    if (!qtdInput || !unitInput || !totalInputItem) return 0;       
+    
     if (deleteInput && deleteInput.checked) {
         row.classList.add('table-danger', 'text-decoration-line-through', 'opacity-50');
         return 0;
@@ -55,6 +179,7 @@ function calcularLinha(row) {
     const qtd = toFloat(qtdInput.value);
     const unit = toFloat(unitInput.value);
     const total = qtd * unit;
+    
     if (Math.abs(toFloat(totalInputItem.value) - total) > 0.01) {
         totalInputItem.value = formatMoney(total);
     }    
@@ -65,14 +190,18 @@ function atualizarTotalGeral() {
     const formTable = document.getElementById('itens-body');
     const totalInput = document.getElementById('id_valor');
     const descontoInput = document.getElementById('id_desconto');    
-    if (!formTable || !totalInput) return;    
+    
+    if (!formTable || !totalInput) return;        
+    
     let somaItens = 0;
     const rows = formTable.querySelectorAll('.item-row');    
     rows.forEach(row => {
         somaItens += calcularLinha(row);
-    });    
+    });        
+    
     let desconto = 0;
-    if (descontoInput) desconto = toFloat(descontoInput.value);    
+    if (descontoInput) desconto = toFloat(descontoInput.value);        
+    
     const totalFinal = Math.max(0, somaItens - desconto);
     totalInput.value = formatMoney(totalFinal);    
     atualizarTextoParcela(totalFinal);
@@ -81,15 +210,19 @@ function atualizarTotalGeral() {
 function atualizarTextoParcela(total) {
     const parcelasInput = document.getElementById('id_parcelas_selecao');
     const infoParcela = document.getElementById('infoParcela');     
-    if (!parcelasInput || !infoParcela) return;    
-    const qtdParcelas = parseInt(parcelasInput.value) || 1;    
+    
+    if (!parcelasInput || !infoParcela) return;       
+    
+    let valStr = parcelasInput.options[parcelasInput.selectedIndex]?.text || "1";
+    const qtdParcelas = parseInt(valStr.replace(/\D/g, '')) || 1;
+
     if (qtdParcelas > 1 && total > 0) {
         const totalCentavos = Math.round(total * 100);
         const baseCentavos = Math.floor(totalCentavos / qtdParcelas);
         const resto = totalCentavos % qtdParcelas;        
         const valBase = baseCentavos / 100;
         const valMaior = (baseCentavos + 1) / 100;        
-        let html = '';
+        let html = '';        
         if (resto === 0) {
             html = `<strong>${qtdParcelas}x</strong> de R$ ${formatMoney(valBase)}`;
         } else {
@@ -101,7 +234,6 @@ function atualizarTextoParcela(total) {
         infoParcela.innerHTML = '';
     }
 }
-
 
 document.addEventListener('input', function(e) {
     if (e.target.matches('.item-qtd, .item-unit, #id_desconto')) {
@@ -118,6 +250,9 @@ document.addEventListener('change', function(e) {
     if (e.target.id === 'id_parcelas_selecao') {
         atualizarTotalGeral();
     }
+    if (e.target.id === 'id_pagamento') {
+        verificarParcelas();
+    }
 });
 
 document.addEventListener('click', function(e) {
@@ -126,10 +261,13 @@ document.addEventListener('click', function(e) {
         e.preventDefault();        
         const formTable = document.getElementById('itens-body');
         const totalFormsInput = document.getElementById('id_itens-TOTAL_FORMS');
-        const emptyFormDiv = document.getElementById('empty-form');         
-        if (!formTable || !totalFormsInput) return;
+        const emptyFormDiv = document.getElementById('empty-form');                
+        
+        if (!formTable || !totalFormsInput) return;        
+        
         const formCount = parseInt(totalFormsInput.value);
-        let newRow;
+        let newRow;        
+        
         if (emptyFormDiv) {
             const templateRow = emptyFormDiv.querySelector('tr');
             newRow = templateRow.cloneNode(true);
@@ -148,10 +286,10 @@ document.addEventListener('click', function(e) {
                     inp.classList.remove('is-invalid');
                 });
             } else {
-                console.error("Erro: Não foi possível adicionar linha (tabela vazia e sem template).");
                 return;
             }
         }        
+        
         newRow.classList.remove('table-danger', 'text-decoration-line-through', 'opacity-50');
         formTable.appendChild(newRow);        
         totalFormsInput.value = formCount + 1;
@@ -160,83 +298,10 @@ document.addEventListener('click', function(e) {
 
 document.addEventListener('DOMContentLoaded', function() {
     const modalAberto = document.getElementById('modalNovaDespesa');
+    
     if (!modalAberto || !modalAberto.classList.contains('show')) {
-        atualizarTotalGeral();
-    }
-});
-
-window.abrirModalNovaCategoria = function() {
-    const modalEl = document.getElementById('modalNovaCategoriaRapida');
-    if (modalEl) {
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
-        setTimeout(() => {
-            const input = modalEl.querySelector('input[name="nome"]');
-            if(input) input.focus();
-        }, 500);
-    }
-};
-
-window.fecharModalNovaCategoria = function() {
-    const modalEl = document.getElementById('modalNovaCategoriaRapida');
-    const modalInstance = bootstrap.Modal.getInstance(modalEl);
-    if (modalInstance) modalInstance.hide();
-};
-
-document.addEventListener('DOMContentLoaded', function() {
-    const formCat = document.getElementById('formNovaCategoriaRapida');
-    if (formCat) {
-        formCat.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const btn = formCat.querySelector('button[type="submit"]');
-            const errorDiv = document.getElementById('error-cat-nome');
-            const inputNome = formCat.querySelector('input[name="nome"]');
-            
-            if(btn) {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-            }
-            if(errorDiv) errorDiv.style.display = 'none';
-            if(inputNome) inputNome.classList.remove('is-invalid');
-
-            const formData = new FormData(formCat);
-
-            fetch(formCat.action, {
-                method: 'POST',
-                body: formData,
-                headers: { "X-Requested-With": "XMLHttpRequest" }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    const selectCat = document.getElementById('id_categoria');
-                    if (selectCat) {
-                        const newOption = new Option(data.nome, data.id, true, true);
-                        selectCat.add(newOption, undefined);
-                        selectCat.dispatchEvent(new Event('change'));
-                    }
-                    formCat.reset();
-                    window.fecharModalNovaCategoria();
-                } else {
-                    if (data.errors && data.errors.nome && errorDiv) {
-                        inputNome.classList.add('is-invalid');
-                        errorDiv.textContent = data.errors.nome[0];
-                        errorDiv.style.display = 'block';
-                    } else {
-                        alert('Erro ao criar categoria.');
-                    }
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert('Erro de conexão.');
-            })
-            .finally(() => {
-                if(btn) {
-                    btn.disabled = false;
-                    btn.textContent = 'Criar';
-                }
-            });
-        });
+        if(document.getElementById('formNovaDespesa')) {
+            window.inicializarScriptsFormulario();
+        }
     }
 });

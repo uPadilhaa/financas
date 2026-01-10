@@ -1,45 +1,42 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block content %}
 <section class="container py-4">
-
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h4 fw-bold mb-0 text-brand-blue-900">Minhas Despesas</h1>
         <button type="button" class="btn btn-brand-green shadow-sm" onclick="abrirModalNovaDespesa('{% url 'despesa_criar' %}')">
             <i class="bi bi-plus-lg me-1"></i> Nova Despesa
         </button>
     </div>
-
     <div class="card border-0 shadow-sm mb-4 bg-light">
         <div class="card-body p-3">
             <form method="get" class="row g-2 align-items-center" id="filterForm">
-                <div class="col-md-5">
+                 <div class="col-md-5">
                     <div class="input-group">
                         <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
-                        <input type="text" name="busca" class="form-control border-start-0 ps-0" 
-                               placeholder="Buscar loja ou descrição..." value="{{ filtro_busca|default:'' }}">
+                        <input type="text" name="busca" class="form-control border-start-0 ps-0" placeholder="Buscar loja ou descrição..." value="{{ filtro_busca|default:'' }}">
                     </div>
                 </div>
                 <div class="col-md-2 col-4">
                     <select name="mes" class="form-select form-select-sm">
                         <option value="">Mês: Todos</option>
-                        <option value="1" {% if filtro_mes == '1' %}selected{% endif %}>Janeiro</option>
-                        <option value="2" {% if filtro_mes == '2' %}selected{% endif %}>Fevereiro</option>
-                        <option value="3" {% if filtro_mes == '3' %}selected{% endif %}>Março</option>
-                        <option value="4" {% if filtro_mes == '4' %}selected{% endif %}>Abril</option>
-                        <option value="5" {% if filtro_mes == '5' %}selected{% endif %}>Maio</option>
-                        <option value="6" {% if filtro_mes == '6' %}selected{% endif %}>Junho</option>
-                        <option value="7" {% if filtro_mes == '7' %}selected{% endif %}>Julho</option>
-                        <option value="8" {% if filtro_mes == '8' %}selected{% endif %}>Agosto</option>
-                        <option value="9" {% if filtro_mes == '9' %}selected{% endif %}>Setembro</option>
-                        <option value="10" {% if filtro_mes == '10' %}selected{% endif %}>Outubro</option>
-                        <option value="11" {% if filtro_mes == '11' %}selected{% endif %}>Novembro</option>
-                        <option value="12" {% if filtro_mes == '12' %}selected{% endif %}>Dezembro</option>
+                        {% for i in "123456789012"|make_list %} {% endfor %}
+                         <option value="1" {% if filtro_mes == '1' %}selected{% endif %}>Janeiro</option>
+                         <option value="2" {% if filtro_mes == '2' %}selected{% endif %}>Fevereiro</option>
+                         <option value="3" {% if filtro_mes == '3' %}selected{% endif %}>Março</option>
+                         <option value="4" {% if filtro_mes == '4' %}selected{% endif %}>Abril</option>
+                         <option value="5" {% if filtro_mes == '5' %}selected{% endif %}>Maio</option>
+                         <option value="6" {% if filtro_mes == '6' %}selected{% endif %}>Junho</option>
+                         <option value="7" {% if filtro_mes == '7' %}selected{% endif %}>Julho</option>
+                         <option value="8" {% if filtro_mes == '8' %}selected{% endif %}>Agosto</option>
+                         <option value="9" {% if filtro_mes == '9' %}selected{% endif %}>Setembro</option>
+                         <option value="10" {% if filtro_mes == '10' %}selected{% endif %}>Outubro</option>
+                         <option value="11" {% if filtro_mes == '11' %}selected{% endif %}>Novembro</option>
+                         <option value="12" {% if filtro_mes == '12' %}selected{% endif %}>Dezembro</option>
                     </select>
                 </div>
                 <div class="col-md-2 col-4">
-                    <select name="ano" class="form-select form-select-sm">
+                     <select name="ano" class="form-select form-select-sm">
                         <option value="">Ano: Todos</option>
                         <option value="{{ hoje.year }}" {% if filtro_ano == hoje.year|stringformat:"i" %}selected{% endif %}>{{ hoje.year }}</option>
                         {% for dt in anos_disponiveis %}
@@ -60,29 +57,23 @@
             </form>
         </div>
     </div>
-
     {% if messages %}
     {% for m in messages %}
     <div class="alert alert-success py-2 mb-3 shadow-sm border-0">{{ m }}</div>
     {% endfor %}
     {% endif %}
-
     {% if despesas_agrupadas %}
-        
         <div class="accordion" id="accordionMeses">
             {% for mes_group in despesas_agrupadas %}
-            <div class="accordion-item border-0 shadow-sm mb-3 overflow-hidden rounded">
-                
+            <div class="accordion-item border-0 shadow-sm mb-3 overflow-hidden rounded">                
                 <h2 class="accordion-header" id="heading{{ forloop.counter }}">
                     <button class="accordion-button fw-bold text-brand-blue-900 {% if not forloop.first %}collapsed{% endif %}" 
                             type="button" data-bs-toggle="collapse" 
-                            data-bs-target="#collapseMes{{ forloop.counter }}">
-                        
+                            data-bs-target="#collapseMes{{ forloop.counter }}">                        
                         <div class="d-flex w-100 justify-content-between align-items-center me-3">
                             <div>
                                 <i class="bi bi-calendar-event me-2"></i> {{ mes_group.grouper|date:"F Y"|capfirst }}
                             </div>
-                            
                             <div class="d-flex align-items-center gap-3">
                                 <span class="badge bg-secondary-subtle text-secondary rounded-pill fw-normal">
                                     {{ mes_group.list|length }} despesas
@@ -92,15 +83,12 @@
                                 </span>
                             </div>
                         </div>
-
                     </button>
-                </h2>
-                
+                </h2>                
                 <div id="collapseMes{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#accordionMeses">
                     <div class="accordion-body p-0 bg-light">
                         <div class="d-flex flex-column gap-2 p-3">
-                            {% for d in mes_group.list %}
-                            
+                            {% for d in mes_group.list %}                            
                             <div class="card border shadow-none hover-shadow transition-all bg-white">
                                 <div class="card-body p-0">
                                     <div class="p-3 d-flex align-items-center justify-content-between cursor-pointer" 
@@ -112,7 +100,6 @@
                                                 <div class="small text-muted" style="font-size: 0.7rem;">{{ d.data|date:"D"|upper }}</div>
                                             </div>
                                         </div>
-
                                         <div class="flex-grow-1 px-2">
                                             <div class="fw-bold text-brand-blue-900 text-truncate">{{ d.emitente_nome }}</div>
                                             <div class="small text-muted d-flex align-items-center gap-2 flex-wrap">
@@ -134,14 +121,29 @@
                                         </div>
                                     </div>
                                 </div>
-
                                 <div class="collapse border-top bg-white" id="collapseDespesa{{ d.pk }}">
                                     <div class="p-3">
                                         <div class="d-flex justify-content-between align-items-center mb-3">
                                             <span class="small fw-bold text-uppercase text-muted">Itens da Nota</span>
+                                            
                                             <div class="btn-group">
-                                                <a href="{% url 'despesa_editar' d.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="bi bi-pencil"></i></a>
-                                                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalDelete{{ d.pk }}" title="Excluir"><i class="bi bi-trash"></i></button>
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-secondary" 
+                                                        onclick="abrirModalNovaDespesa('{% url 'despesa_editar' d.pk %}')" 
+                                                        title="Editar">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-danger"
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#modalConfirmarExclusaoDespesa"
+                                                        data-url="{% url 'despesa_deletar' d.pk %}"
+                                                        data-nome="{{ d.emitente_nome }}"
+                                                        data-valor="{{ d.valor|floatformat:2 }}"
+                                                        title="Excluir">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
                                             </div>
                                         </div>
 
@@ -176,24 +178,6 @@
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div class="modal fade" id="modalDelete{{ d.pk }}" tabindex="-1" aria-hidden="true">
-                                <div class="modal-dialog modal-sm modal-dialog-centered">
-                                    <div class="modal-content">
-                                        <div class="modal-body text-center p-4">
-                                            <h6 class="mb-3">Excluir despesa?</h6>
-                                            <p class="small text-muted mb-4">{{ d.emitente_nome }}<br>R$ {{ d.valor }}</p>
-                                            <div class="d-flex justify-content-center gap-2">
-                                                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                <form action="{% url 'despesa_deletar' d.pk %}" method="post">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
                             {% endfor %}
                         </div>
                     </div>
@@ -201,7 +185,6 @@
             </div>
             {% endfor %}
         </div>
-
     {% else %}
         <div class="bg-brand-blue-50 rounded p-5 text-center">
             <i class="bi bi-search fs-1 text-brand-blue opacity-50"></i>
@@ -210,7 +193,6 @@
         </div>
     {% endif %}
 </section>
-
 <div class="modal fade" id="modalNovaDespesa" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
@@ -227,7 +209,6 @@
         </div>
     </div>
 </div>
-
 <div class="modal fade" id="modalImportar" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -236,7 +217,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <form id="formImportarNF" action="{% url 'despesa_importar_nfe' %}" method="post" enctype="multipart/form-data">
+                <form id="formImportarNF" action="{% url 'despesa_importar_nfe' %}" method="post" enctype="multipart/form-data" data-no-loader="true">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label class="form-label fw-bold">Foto do QR Code ou PDF da NF-e</label>
@@ -255,8 +236,37 @@
         </div>
     </div>
 </div>
+<div class="modal fade" id="modalConfirmarExclusaoDespesa" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3 text-danger opacity-75">
+                    <i class="bi bi-exclamation-circle-fill" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="fw-bold text-dark mb-2">Excluir Despesa?</h5>
+                <p class="text-muted small mb-4">
+                    Você vai excluir: <br>
+                    <strong id="nomeDespesaExclusao" class="text-dark">...</strong><br>
+                    <span class="text-danger fw-bold">R$ <span id="valorDespesaExclusao">0,00</span></span>
+                    <br><span class="small mt-2 d-block text-secondary">Essa ação não pode ser desfeita.</span>
+                </p>
+                
+                <form id="formExcluirDespesa" method="post" action="" data-no-loader="true">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger fw-bold shadow-sm" data-no-loader="true">
+                            Sim, excluir
+                        </button>
+                        <button type="button" class="btn btn-light text-muted border" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script src="{% static 'js/despesa_lista.js' %}"></script>
 <script src="{% static 'js/despesa_form.js' %}"></script>
-
 {% endblock %}

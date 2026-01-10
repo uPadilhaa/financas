@@ -144,12 +144,9 @@
             </div>
 
             <div class="col-6 col-md-3">
-                <label class="form-label small text-muted mb-1 fw-bold">Parcelas</label>
-                {% if form.instance.pk %}
-                    <input type="text" class="form-control" value="{{ form.instance.parcela_atual }}/{{ form.instance.total_parcelas }}" disabled>
-                {% else %}
-                    {{ form.parcelas_selecao }}
-                {% endif %}
+                <label class="form-label small text-muted mb-1 fw-bold">Parcelas</label>                
+                {{ form.parcelas_selecao }}                
+                <div class="invalid-feedback d-block">{{ form.parcelas_selecao.errors.0 }}</div>
             </div>
 
             <div class="col-6 col-md-3">

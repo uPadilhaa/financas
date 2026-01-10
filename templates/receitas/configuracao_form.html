@@ -1,5 +1,9 @@
 {% extends "base.html" %}
+{% load static %}
+
 {% block content %}
+<link href="{% static 'css/pages/receitas.css' %}" rel="stylesheet">
+
 <section class="py-5">
     <div class="container">
         <div class="row justify-content-center">
@@ -7,40 +11,32 @@
                 <div class="card border-0 shadow-sm">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h4 class="fw-bold mb-0 text-brand-blue-900">Configuração de Renda</h4>
-                            <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary">Voltar</a>
+                            <h4 class="fw-bold mb-0 text-brand-blue-900">Configuração de Renda Fixa</h4>
+                            <a href="{% url 'listar_receitas' %}" class="btn btn-sm btn-outline-secondary">Voltar</a>
                         </div>
 
-                        <div class="alert alert-info border-0 bg-brand-blue-50 small">
+                        <div class="alert alert-info border-0 bg-brand-blue-50 small mb-4">
                             <i class="bi bi-info-circle-fill me-1"></i>
-                            Defina aqui seus ganhos fixos. Metas e limites são configurados no Dashboard.
+                            Defina aqui seu salário ou ganhos fixos mensais. Ganhos extras eventuais devem ser lançados na tela principal.
                         </div>
 
-                        <form method="post" novalidate>
+                        <form method="post" novalidate class="form-validacao-receita" id="formConfigRenda">
                             {% csrf_token %}
 
-                            <div class="mb-3">
-                                <label class="form-label fw-semibold">Renda Mensal Fixa <span class="text-danger">*</span></label>
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold text-brand-blue-900">Renda Mensal Fixa <span class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white">R$</span>
                                     {{ form.renda_fixa }}
                                 </div>
                                 <div class="invalid-feedback d-block">{{ form.renda_fixa.errors.0 }}</div>
-                                <div class="form-text">Seu salário líquido ou ganhos recorrentes.</div>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold text-primary">Investimento Mensal Fixo</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-white">R$</span>
-                                    {{ form.investimento_fixo }}
-                                </div>
-                                 <div class="invalid-feedback d-block">{{ form.investimento_fixo.errors.0 }}</div>
-                                <div class="form-text">Valor que você separa todo mês automaticamente.</div>
+                                <div class="form-text text-muted">Valor líquido recebido mensalmente.</div>
                             </div>
 
                             <div class="d-grid">
-                                <button class="btn btn-brand-green" type="submit">Salvar Renda</button>
+                                <button class="btn btn-brand-green py-2 fw-bold shadow-sm" type="submit">
+                                    <i class="bi bi-check-lg me-1"></i> Salvar Configuração
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -49,4 +45,6 @@
         </div>
     </div>
 </section>
+
+<script src="{% static 'js/receitas.js' %}"></script>
 {% endblock %}

@@ -162,7 +162,6 @@ def criar_despesa(request):
 @login_required
 def editar_despesa(request, pk: int):
     despesa = get_object_or_404(Despesa, pk=pk, user=request.user)
-
     if request.method == "POST":
         form = DespesaForm(request.POST, instance=despesa, user=request.user)
         formset = ItemDespesaFormSet(request.POST, instance=despesa, prefix="itens")
@@ -174,20 +173,30 @@ def editar_despesa(request, pk: int):
                 despesa.refresh_from_db()
                 despesa.qtd_total_itens = despesa.itens.count()
                 despesa.save()
+            
             messages.success(request, "Despesa atualizada!", extra_tags="despesa")            
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                  return JsonResponse({'success': True})
+            
             return redirect("listar_despesa")
+        else:
+            print("ERRO DE VALIDAÇÃO:")
+            print("Form:", form.errors)
+            print("Formset:", formset.errors)
     else:
         form = DespesaForm(instance=despesa, user=request.user)
         formset = ItemDespesaFormSet(instance=despesa, prefix="itens")
 
-    return render(request, "despesas/despesa_form/despesa_form.html", {
+    context = {
         "form": form, 
         "formset": formset, 
         "edicao": True, 
         "despesa_obj": despesa 
-    })
+    }
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+         return render(request, "despesas/despesa_form/main.html", context)
+
+    return render(request, "despesas/despesa_form/despesa_form_completo.html", context)
 
 @login_required
 def deletar_despesa(request, pk: int):

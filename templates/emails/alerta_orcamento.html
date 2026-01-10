@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ titulo }}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+    
+    <div style="color: #333; max-width: 600px; margin: 20px auto; background-color: #ffffff; border: 1px solid #eee; border-radius: 8px; overflow: hidden;">
+        
+        <div style="background-color: {{ cor }}; padding: 25px 20px; text-align: center; color: #fff;">
+            <h1 style="margin: 0; font-size: 24px; line-height: 1.2;">{{ emoji }} {{ titulo }}</h1>
+            <p style="margin: 8px 0 0 0; font-size: 16px; opacity: 0.95;">{{ subtitulo }}</p>
+        </div>
+        
+        <div style="padding: 25px;">
+            <p style="font-size: 16px; margin-bottom: 20px;">Olá, <strong>{{ nome_usuario }}</strong>!</p>
+            
+            <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e9ecef;">
+                <h3 style="margin-top: 0; color: #555; border-bottom: 1px solid #ddd; padding-bottom: 10px; font-size: 16px;">
+                    Resumo de {{ mes_nome }}/{{ ano }}
+                </h3>
+                <table width="100%" style="font-size: 15px; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;">🎯 Orçamento:</td>
+                        <td style="text-align: right; font-weight: bold;">{{ orcamento_fmt }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;">💸 Gastos Totais:</td>
+                        <td style="text-align: right; color: {{ cor }}; font-weight: bold;">{{ total_despesas_fmt }}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; border-top: 1px solid #eee; margin-top: 5px;"><strong>💰 Saldo Restante:</strong></td>
+                        <td style="text-align: right; border-top: 1px solid #eee; margin-top: 5px; font-weight: bold; color: {% if saldo_negativo %}#dc3545{% else %}#3dc944{% endif %};">
+                            {{ saldo_fmt }}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <p style="margin-bottom: 8px; font-size: 13px; color: #777; font-weight: bold;">Nível de Utilização:</p>
+            <div style="background-color: #e9ecef; border-radius: 12px; height: 24px; width: 100%; overflow: hidden;">
+                <div style="background-color: {{ cor }}; width: {{ percentual_barra }}%; height: 100%; text-align: right; padding-right: 10px; line-height: 24px; color: #fff; font-size: 12px; font-weight: bold;">
+                    {{ percentual_usado|floatformat:1 }}%
+                </div>
+            </div>
+            {% if percentual_usado > 100 %}
+                <p style="font-size: 12px; color: #dc3545; margin-top: 5px; font-style: italic;">
+                    * A barra para em 100%, mas seus gastos continuam contando!
+                </p>
+            {% endif %}
+
+            <br>
+
+            <div style="border-left: 4px solid {{ cor }}; padding-left: 20px; margin-top: 15px; background-color: #fff;">
+                <h4 style="margin: 0 0 10px 0; color: {{ cor }}; font-size: 16px;">💡 O que fazer agora?</h4>
+                <ul style="margin: 0; padding-left: 20px; color: #555; line-height: 1.5;">
+                    {% for dica in dicas %}
+                        <li style="margin-bottom: 8px;">{{ dica }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div style="text-align: center; margin-top: 35px; margin-bottom: 10px;">
+                <a href="{{ link_despesas }}" style="background-color: {{ cor }}; color: #fff; text-decoration: none; padding: 14px 35px; border-radius: 50px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    Ver Detalhes
+                </a>
+            </div>
+        </div>
+        
+        <div style="background-color: #f1f1f1; padding: 20px; text-align: center; font-size: 12px; color: #888; border-top: 1px solid #eee;">
+            <p style="margin: 0;">Enviado automaticamente pelo <strong>BpCash Finanças</strong>.</p>
+            <p style="margin: 5px 0 0 0;">Não responda a este e-mail.</p>
+        </div>
+    </div>
+
+</body>
+</html>

@@ -1,14 +1,10 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-
 <div class="py-4 dashboard-page">
   <div class="container-fluid px-lg-5">
-
-    <!-- Cabeçalho -->
     <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4 gap-3">
       <div>
         <h1 class="h4 fw-bold mb-1 text-brand-blue-900">Visão geral</h1>
@@ -16,20 +12,7 @@
           Visão consolidada de {{ data_referencia|date:"F/Y" }}
         </p>
       </div>
-
       <div class="d-flex flex-column align-items-stretch align-items-lg-end gap-2">
-
-        <!-- ALERTA ACIMA -->
-        <div class="d-flex justify-content-lg-end">
-          <button type="button"
-                  class="btn btn-outline-light bg-white text-brand-blue-900 d-flex align-items-center gap-2"
-                  data-bs-toggle="modal" data-bs-target="#modalLimites">
-            <i class="bi bi-bell-fill text-warning"></i>
-            <span>Alerta</span>
-          </button>
-        </div>
-
-        <!-- BOTÕES DE MÊS ABAIXO -->
         <div class="btn-group btn-group-sm shadow-sm" role="group" aria-label="Mês">
             <a href="{% url 'dashboard' %}?scope=anterior{% if periodo_filtro %}&range={{ periodo_filtro }}{% endif %}"
                 class="btn btn-outline-light bg-white text-brand-blue-900 {% if escopo_mes == 'anterior' %}active{% endif %}">
@@ -44,12 +27,9 @@
                 Próximo mês
             </a>
         </div>
-
       </div>
     </div>
-
     <div class="dashboard-container">
-      <!-- Sidebar com KPIs -->
       <aside class="kpi-sidebar">
         <div class="kpi-card-vertical theme-income">
           <i class="bi bi-wallet2 kpi-icon-overlay"></i>
@@ -82,7 +62,6 @@
           </div>
           <div class="kpi-subtext-v">Em caixa</div>
         </div>
-
         <div class="kpi-card-vertical" style="background: #475569; border-left-color: #cbd5e1;">
           <i class="bi bi-calendar-event kpi-icon-overlay"></i>
           <div class="kpi-label-v">Lançamentos Futuros</div>
@@ -90,11 +69,7 @@
           <div class="kpi-subtext-v">A vencer nos próximos meses</div>
         </div>
       </aside>
-
-      <!-- Área de gráficos -->
       <main class="charts-area">
-
-        <!-- Linha com evolução + investimentos x despesas % -->
         <div class="row g-3 mb-3">
             <div class="col-xl-7">
             <div class="chart-card h-100">
@@ -124,7 +99,6 @@
                 <div id="chart-evo" class="chart-container"></div>
             </div>
             </div>
-
             <div class="col-xl-5">
             <div class="chart-card h-100">
                 <h5 class="chart-title mb-0">Investimentos x Despesas (%)</h5>
@@ -133,8 +107,6 @@
             </div>
             </div>
         </div>
-
-        <!-- Linha de gráficos menores -->
         <div class="row g-3">
             <div class="col-lg-4">
             <div class="chart-card h-100">
@@ -156,12 +128,10 @@
             </div>
             </div>
         </div>
-
       </main>
     </div>
   </div>
 </div>
-
 {% if graficos %}
 <script id="d-evo" type="application/json">{{ graficos.evolucao_despesas|safe }}</script>
 <script id="d-invest-desp" type="application/json">{{ graficos.invest_despesas_pct|safe }}</script>
@@ -170,5 +140,4 @@
 <script id="d-orc" type="application/json">{{ graficos.orcado_realizado|safe }}</script>
 <script src="{% static 'js/dashboard.js' %}"></script>
 {% endif %}
-{% include "includes/modal_limites.html" %}
 {% endblock %}

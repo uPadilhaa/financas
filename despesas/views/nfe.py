@@ -530,6 +530,6 @@ def importar_NFe(request):
                 "formset": formset
             })
 
-        return render(request, "despesas/despesa_form/despesa_form.html", {"form": form_desp, "formset": formset})
+        return render(request, "despesas/despesa_form/despesa_form_completo.html", {"form": form_desp, "formset": formset})
 
     return render(request, "despesas/importar_NFe.html", {"form": UploadNFeForm()})

@@ -2,16 +2,21 @@
 {% load static %}
 
 {% block content %}
+<link href="{% static 'css/receita.css' %}" rel="stylesheet">
+
 <section class="container py-4">
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h4 fw-bold mb-0 text-brand-blue-900">Minhas Rendas</h1>
-        <div class="d-flex gap-2">
-            <a href="{% url 'configurar_financas' %}" class="btn btn-outline-secondary shadow-sm">
-                <i class="bi bi-gear-fill me-1"></i> Renda Fixa
+    <div class="row align-items-center mb-4">
+        <div class="col-md-8">
+            <h1 class="h4 fw-bold text-brand-blue-900 mb-1">Minhas Rendas</h1>
+            <p class="text-muted small mb-0">Gerencie suas entradas financeiras (salário e extras).</p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <a href="{% url 'configurar_financas' %}" class="btn btn-outline-secondary btn-sm me-2 shadow-sm">
+                <i class="bi bi-gear-fill me-1"></i> Configurar Renda Fixa
             </a>
-            <a class="btn btn-brand-green shadow-sm" href="{% url 'receita_criar' %}">
-                <i class="bi bi-plus-lg me-1"></i> Adicionar Renda
+            <a class="btn btn-brand-green btn-sm shadow-sm" href="{% url 'receita_criar' %}">
+                <i class="bi bi-plus-lg me-1"></i> Nova Renda Extra
             </a>
         </div>
     </div>
@@ -30,8 +35,17 @@
                     <select name="mes" class="form-select form-select-sm">
                         <option value="">Mês: Todos</option>
                         <option value="1" {% if filtro_mes == '1' %}selected{% endif %}>Janeiro</option>
+                        <option value="2" {% if filtro_mes == '2' %}selected{% endif %}>Fevereiro</option>
+                        <option value="3" {% if filtro_mes == '3' %}selected{% endif %}>Março</option>
+                        <option value="4" {% if filtro_mes == '4' %}selected{% endif %}>Abril</option>
+                        <option value="5" {% if filtro_mes == '5' %}selected{% endif %}>Maio</option>
+                        <option value="6" {% if filtro_mes == '6' %}selected{% endif %}>Junho</option>
+                        <option value="7" {% if filtro_mes == '7' %}selected{% endif %}>Julho</option>
+                        <option value="8" {% if filtro_mes == '8' %}selected{% endif %}>Agosto</option>
+                        <option value="9" {% if filtro_mes == '9' %}selected{% endif %}>Setembro</option>
+                        <option value="10" {% if filtro_mes == '10' %}selected{% endif %}>Outubro</option>
                         <option value="11" {% if filtro_mes == '11' %}selected{% endif %}>Novembro</option>
-                         <option value="12" {% if filtro_mes == '12' %}selected{% endif %}>Dezembro</option>
+                        <option value="12" {% if filtro_mes == '12' %}selected{% endif %}>Dezembro</option>
                     </select>
                 </div>
                 <div class="col-md-3 col-6">
@@ -39,11 +53,6 @@
                         <option value="">Ano: Todos</option>
                         <option value="{{ hoje.year }}" {% if filtro_ano == hoje.year|stringformat:"i" %}selected{% endif %}>{{ hoje.year }}</option>
                         <option value="{{ hoje.year|add:'-1' }}" {% if filtro_ano == hoje.year|add:'-1'|stringformat:"i" %}selected{% endif %}>{{ hoje.year|add:"-1" }}</option>
-                        {% for dt in anos_disponiveis %}
-                            {% if dt.year != hoje.year and dt.year != hoje.year|add:"-1" %}
-                                <option value="{{ dt.year }}" {% if filtro_ano == dt.year|stringformat:"i" %}selected{% endif %}>{{ dt.year }}</option>
-                            {% endif %}
-                        {% endfor %}
                     </select>
                 </div>
             </form>
@@ -52,12 +61,14 @@
 
     {% if messages %}
     {% for m in messages %}
-    <div class="alert alert-success py-2 mb-3 shadow-sm border-0">{{ m }}</div>
+    <div class="alert alert-{{ m.tags|default:'success' }} alert-dismissible fade show shadow-sm border-0" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i> {{ m }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
     {% endfor %}
     {% endif %}
 
     {% if receitas %}
-        
         {% regroup receitas by data|date:"F Y" as receitas_por_mes %}
 
         <div class="accordion" id="accordionReceitas">
@@ -69,8 +80,15 @@
                             type="button" data-bs-toggle="collapse" 
                             data-bs-target="#collapseRec{{ forloop.counter }}" 
                             aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}">
-                        <i class="bi bi-calendar-check me-2"></i> {{ mes_group.grouper|capfirst }}
-                        <span class="badge bg-success-subtle text-success ms-3 rounded-pill">{{ mes_group.list|length }} rendas</span>
+                        
+                        <div class="d-flex w-100 justify-content-between align-items-center me-3">
+                            <div>
+                                <i class="bi bi-calendar-check me-2"></i> {{ mes_group.grouper|capfirst }}
+                            </div>
+                            <span class="badge bg-success-subtle text-success rounded-pill fw-normal">
+                                {{ mes_group.list|length }} lançamentos
+                            </span>
+                        </div>
                     </button>
                 </h2>
                 
@@ -78,64 +96,63 @@
                      class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" 
                      data-bs-parent="#accordionReceitas">
                     
-                    <div class="accordion-body p-0">
-                        <div class="table-responsive">
-                            <table class="table align-middle table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="ps-4">Dia</th>
-                                        <th>Descrição</th>
-                                        <th class="text-end">Bruto</th>
-                                        <th class="text-end text-primary">Investido</th>
-                                        <th class="text-end text-success pe-4">Disponível</th>
-                                        <th class="text-end pe-3"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for r in mes_group.list %}
-                                    <tr>
-                                        <td class="ps-4 text-muted fw-bold">{{ r.data|date:"d" }}</td>
-                                        <td class="fw-semibold">{{ r.descricao }}</td>
-                                        <td class="text-end text-muted">R$ {{ r.valor_bruto|floatformat:2 }}</td>
-                                        <td class="text-end text-primary">
-                                            {% if r.valor_investimento > 0 %}
-                                            - R$ {{ r.valor_investimento|floatformat:2 }}
-                                            {% else %}
-                                            <span class="opacity-25">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="text-end fw-bold text-success pe-4">R$ {{ r.valor_disponivel|floatformat:2 }}</td>
-                                        <td class="text-end pe-3">
-                                            <div class="btn-group">
-                                                <a href="{% url 'receita_editar' r.pk %}" class="btn btn-sm btn-light border"><i class="bi bi-pencil"></i></a>
-                                                <button type="button" class="btn btn-sm btn-light border text-danger" 
-                                                    data-bs-toggle="modal" data-bs-target="#modalDelRec{{ r.pk }}">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
+                    <div class="accordion-body p-0 bg-light">
+                        <div class="d-flex flex-column gap-2 p-3">
+                            {% for r in mes_group.list %}
+                            
+                            <div class="card border shadow-none hover-shadow transition-all bg-white">
+                                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                                    
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="avatar-receita bg-success-subtle text-success">
+                                            <i class="bi bi-arrow-up-right fw-bold"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark">{{ r.descricao }}</div>
+                                            <div class="small text-muted">
+                                                {{ r.data|date:"d/m/Y" }} 
+                                                {% if r.observacoes %}
+                                                <span class="ms-1 text-truncate d-inline-block" style="max-width: 150px;">• {{ r.observacoes }}</span>
+                                                {% endif %}
                                             </div>
+                                        </div>
+                                    </div>
 
-                                            <div class="modal fade text-start" id="modalDelRec{{ r.pk }}" tabindex="-1" aria-hidden="true">
-                                                <div class="modal-dialog modal-sm modal-dialog-centered">
-                                                    <div class="modal-content">
-                                                        <div class="modal-body text-center p-4">
-                                                            <h6 class="mb-3">Excluir renda?</h6>
-                                                            <p class="small text-muted">{{ r.descricao }}</p>
-                                                            <div class="d-flex justify-content-center gap-2">
-                                                                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                                <form action="{% url 'receita_deletar' r.pk %}" method="post">
-                                                                    {% csrf_token %}
-                                                                    <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="text-end">
+                                            <div class="fw-bold text-success">R$ {{ r.valor_bruto|floatformat:2 }}</div>
+                                            <div class="small text-muted" style="font-size: 0.7rem;">RECEBIDO</div>
+                                        </div>
+
+                                        <div class="dropdown">
+                                            <button class="btn btn-link text-muted p-0 no-arrow" type="button" data-bs-toggle="dropdown">
+                                                <i class="bi bi-three-dots-vertical"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                                <li>
+                                                    <a class="dropdown-item small" href="{% url 'receita_editar' r.pk %}">
+                                                        <i class="bi bi-pencil me-2 text-warning"></i> Editar
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <button class="dropdown-item small text-danger"
+                                                            type="button"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#modalConfirmarExclusaoReceita"
+                                                            data-url="{% url 'receita_deletar' r.pk %}"
+                                                            data-nome="{{ r.descricao }}"
+                                                            data-valor="{{ r.valor_bruto|floatformat:2 }}">
+                                                        <i class="bi bi-trash me-2"></i> Excluir
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
@@ -144,17 +161,48 @@
         </div>
 
     {% else %}
-    <div class="bg-brand-blue-50 rounded p-5 text-center">
-        <i class="bi bi-wallet2 fs-1 text-brand-blue opacity-50"></i>
-        <p class="mt-3 mb-3 fw-semibold text-brand-blue-900">Nenhuma renda encontrada.</p>
-        {% if filtro_busca or filtro_mes or filtro_ano %}
-        <a href="{% url 'listar_receitas' %}" class="btn btn-outline-primary btn-sm">Limpar Filtros</a>
-        {% else %}
-        <a class="btn btn-brand-green" href="{% url 'receita_criar' %}">Adicionar Renda</a>
-        {% endif %}
-    </div>
+        <div class="bg-brand-blue-50 rounded p-5 text-center mt-3">
+            <i class="bi bi-wallet2 fs-1 text-brand-blue opacity-50"></i>
+            <p class="mt-3 mb-3 fw-semibold text-brand-blue-900">Nenhuma renda encontrada.</p>
+            {% if filtro_busca or filtro_mes or filtro_ano %}
+                <a href="{% url 'listar_receitas' %}" class="btn btn-outline-primary btn-sm">Limpar Filtros</a>
+            {% else %}
+                <a class="btn btn-brand-green" href="{% url 'receita_criar' %}">Adicionar Renda</a>
+            {% endif %}
+        </div>
     {% endif %}
 </section>
 
-<script src="{% static 'js/despesa_lista.js' %}"></script>
+<div class="modal fade" id="modalConfirmarExclusaoReceita" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3 text-danger opacity-75">
+                    <i class="bi bi-exclamation-circle-fill" style="font-size: 3rem;"></i>
+                </div>
+                <h5 class="fw-bold text-dark mb-2">Excluir Renda?</h5>
+                <p class="text-muted small mb-4">
+                    Você vai excluir: <br>
+                    <strong id="nomeReceitaExclusao" class="text-dark">...</strong><br>
+                    <span class="text-success fw-bold">R$ <span id="valorReceitaExclusao">0,00</span></span>
+                    <br><span class="small mt-2 d-block text-secondary">Essa ação não pode ser desfeita.</span>
+                </p>
+                
+                <form id="formExcluirReceita" method="post" action="" data-no-loader="true">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger fw-bold shadow-sm" data-no-loader="true">
+                            Sim, excluir
+                        </button>
+                        <button type="button" class="btn btn-light text-muted border" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'js/receita.js' %}"></script>
 {% endblock %}

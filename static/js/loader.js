@@ -7,35 +7,51 @@
     window.addEventListener('pageshow', hideOverlay);
 
     document.addEventListener('click', function (e) {
-        const el = e.target.closest('a, button[type=submit]');
-        if (!el) return;
-        if (el.hasAttribute('data-no-loader') || el.getAttribute('target') === '_blank') return;
-        if (el.matches('button[type=submit]')) {
-            const form = el.form || el.closest('form');
-
-            if (form && !form.checkValidity()) {
-                return;
-            }
-
-            if (el.matches('.btn') && !el.querySelector('.spinner-border')) {
-                el.classList.add('disabled');
-                el.dataset.originalContent = el.innerHTML;
-                el.insertAdjacentHTML(
-                    'afterbegin',
-                    '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>'
-                );
-            }
-        }
-
-        if (el.matches('a.nav-delay')) {
-            e.preventDefault();
-            showOverlay();
-            setTimeout(() => { window.location.href = el.href; }, 180);
+        const link = e.target.closest('a');        
+        if (!link || 
+            link.getAttribute('target') === '_blank' || 
+            link.hasAttribute('data-no-loader') || 
+            link.getAttribute('href')?.startsWith('#') ||
+            e.ctrlKey || e.metaKey) {
             return;
         }
 
-        showOverlay();
+        if (link.classList.contains('nav-delay')) {
+            e.preventDefault();
+            showOverlay();
+            setTimeout(() => { window.location.href = link.href; }, 180);
+        } else {
+        }
     }, { capture: true });
 
-    window.addEventListener('beforeunload', showOverlay);
+    document.addEventListener('submit', function (e) {
+        const form = e.target;
+        const submitter = e.submitter;
+        if (e.defaultPrevented) {
+            return;
+        }
+
+        const hasNoLoader = form.hasAttribute('data-no-loader') || 
+                            (submitter && submitter.hasAttribute('data-no-loader'));
+
+        if (hasNoLoader || !form.checkValidity()) {
+            return;
+        }
+        showOverlay();        
+        if (submitter && submitter.matches('.btn') && !submitter.querySelector('.spinner-border')) {
+            submitter.classList.add('disabled');
+            submitter.dataset.originalContent = submitter.innerHTML;
+            submitter.insertAdjacentHTML(
+                'afterbegin',
+                '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>'
+            );
+        }
+    });
+
+    window.addEventListener('beforeunload', function (e) {
+        const active = document.activeElement;
+        if (active && (active.hasAttribute('data-no-loader') || active.closest('[data-no-loader]'))) {
+            return;
+        }
+    });
 })();

@@ -13,4 +13,4 @@ class Usuario(models.Model):
     atualizado_em = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.user.get_full_name() or self.user.email
+        return self.user.get_full_name() or self.user.emailpoo
