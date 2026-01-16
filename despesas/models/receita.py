@@ -7,7 +7,7 @@ class Receita(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="receitas")
     descricao = models.CharField("Descrição", max_length=200)
     valor_bruto = models.DecimalField("Valor Bruto (R$)", max_digits=10, decimal_places=2)
-    valor_investimento = models.DecimalField("Investimentos / Retenções (R$)", max_digits=10, decimal_places=2, default=0)    
+    # valor_investimento = models.DecimalField("Investimentos / Retenções (R$)", max_digits=10, decimal_places=2, default=0)    
     data = models.DateField("Data de Recebimento", default=timezone.localdate)
     observacoes = models.TextField(blank=True, null=True)
 
@@ -21,4 +21,4 @@ class Receita(models.Model):
 
     @property
     def valor_disponivel(self):
-        return self.valor_bruto - self.valor_investimento
+        return self.valor_bruto 

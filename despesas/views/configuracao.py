@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_POST
-from despesas.forms.configuracao import ConfiguracaoRendaForm, LimitesGastosForm 
+from despesas.forms.configuracao import ConfiguracaoRendaForm, ConfiguracaoNotificacaoForm 
 from despesas.models import Usuario
 
 @login_required
@@ -21,16 +21,16 @@ def configurar_financas(request):
     return render(request, "receitas/configuracao_form.html", {"form": form})
 
 @login_required
-@require_POST
-def salvar_limites(request):
-    """Processa o Modal de Metas do Dashboard."""
+def configurar_notificacoes(request):
     perfil, _ = Usuario.objects.get_or_create(user=request.user)
-    form = LimitesGastosForm(request.POST, instance=perfil)
-    
-    if form.is_valid():
-        form.save()
-        messages.success(request, "Seus limites e metas foram atualizados!")
+
+    if request.method == 'POST':
+        form = ConfiguracaoNotificacaoForm(request.POST, instance=perfil)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Preferências de notificação atualizadas!")
+            return redirect('configurar_notificacoes')
     else:
-        messages.error(request, "Erro ao salvar limites. Verifique os valores.")
-        
-    return redirect("dashboard")
+        form = ConfiguracaoNotificacaoForm(instance=perfil)
+
+    return render(request, 'configuracao_notificacoes.html', {'form': form})

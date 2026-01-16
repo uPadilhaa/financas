@@ -3,140 +3,157 @@
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
 <div class="py-4 dashboard-page">
   <div class="container-fluid px-lg-5">
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-4 gap-3">
+    
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
       <div>
-        <h1 class="h4 fw-bold mb-1 text-brand-blue-900">Visão geral</h1>
-        <p class="text-muted small mb-0">
-          Visão consolidada de {{ data_referencia|date:"F/Y" }}
+        <h1 class="h3 fw-bold mb-1 text-slate-800">Visão Geral</h1>
+        <p class="text-slate-500 mb-0">
+          Resumo financeiro de <span class="fw-semibold text-primary">{{ data_referencia|date:"F/Y" }}</span>
         </p>
       </div>
-      <div class="d-flex flex-column align-items-stretch align-items-lg-end gap-2">
-        <div class="btn-group btn-group-sm shadow-sm" role="group" aria-label="Mês">
-            <a href="{% url 'dashboard' %}?scope=anterior{% if periodo_filtro %}&range={{ periodo_filtro }}{% endif %}"
-                class="btn btn-outline-light bg-white text-brand-blue-900 {% if escopo_mes == 'anterior' %}active{% endif %}">
-                Mês anterior
-            </a>
-            <a href="{% url 'dashboard' %}?scope=atual{% if periodo_filtro %}&range={{ periodo_filtro }}{% endif %}"
-                class="btn btn-outline-light bg-white text-brand-blue-900 {% if escopo_mes == 'atual' %}active{% endif %}">
-                Mês atual
-            </a>
-            <a href="{% url 'dashboard' %}?scope=proximo{% if periodo_filtro %}&range={{ periodo_filtro }}{% endif %}"
-                class="btn btn-outline-light bg-white text-brand-blue-900 {% if escopo_mes == 'proximo' %}active{% endif %}">
-                Próximo mês
-            </a>
+      
+      <div class="btn-group shadow-sm" role="group">
+          <a href="?scope=anterior{% if periodo_filtro %}&range={{ periodo_filtro }}{% endif %}" 
+             class="btn btn-white {% if escopo_mes == 'anterior' %}active{% endif %}">
+             <i class="bi bi-chevron-left small"></i> Anterior
+          </a>
+          <a href="?scope=atual{% if periodo_filtro %}&range={{ periodo_filtro }}{% endif %}" 
+             class="btn btn-white {% if escopo_mes == 'atual' %}active{% endif %}">
+             Atual
+          </a>
+          <a href="?scope=proximo{% if periodo_filtro %}&range={{ periodo_filtro }}{% endif %}" 
+             class="btn btn-white {% if escopo_mes == 'proximo' %}active{% endif %}">
+             Próximo <i class="bi bi-chevron-right small"></i>
+          </a>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="kpi-card theme-income h-100">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="kpi-label">Entradas Totais</div>
+              <div class="kpi-value">R$ {{ entradas_totais|floatformat:2 }}</div>
+              <div class="kpi-subtext">
+                {% if renda_extra > 0 %}
+                  <span class="text-success fw-medium">+ R$ {{ renda_extra|floatformat:0 }}</span> variáveis
+                {% else %}
+                  <span class="text-muted">Apenas renda fixa</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="kpi-icon-wrapper">
+              <i class="bi bi-arrow-down-left"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="kpi-card theme-expense h-100">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="kpi-label">Saídas Totais</div>
+              <div class="kpi-value">R$ {{ saidas_totais|floatformat:2 }}</div>
+              <div class="kpi-subtext">
+                {% if pct_diff_gastos > 0 %}
+                  <span class="text-danger fw-medium">+{{ pct_diff_gastos|floatformat:1 }}%</span> vs. mês anterior
+                {% elif pct_diff_gastos < 0 %}
+                  <span class="text-success fw-medium">{{ pct_diff_gastos|floatformat:1 }}%</span> vs. mês anterior
+                {% else %}
+                  Mesmo patamar anterior
+                {% endif %}
+              </div>
+            </div>
+            <div class="kpi-icon-wrapper">
+              <i class="bi bi-arrow-up-right"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="kpi-card theme-balance h-100">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="kpi-label">Saldo em Caixa</div>
+              <div class="kpi-value {% if saldo < 0 %}text-danger{% endif %}">
+                R$ {{ saldo|floatformat:2 }}
+              </div>
+              <div class="kpi-subtext">
+                Entradas - Saídas
+              </div>
+            </div>
+            <div class="kpi-icon-wrapper">
+              <i class="bi bi-wallet2"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="kpi-card theme-future h-100">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="kpi-label">A Vencer (Futuro)</div>
+              <div class="kpi-value">R$ {{ lancamentos_futuros|floatformat:2 }}</div>
+              <div class="kpi-subtext">Próximos meses</div>
+            </div>
+            <div class="kpi-icon-wrapper">
+              <i class="bi bi-calendar-event"></i>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="dashboard-container">
-      <aside class="kpi-sidebar">
-        <div class="kpi-card-vertical theme-income">
-          <i class="bi bi-wallet2 kpi-icon-overlay"></i>
-          <div class="kpi-label-v">Total Entradas</div>
-          <div class="kpi-value-v">R$ {{ entradas_totais|floatformat:2 }}</div>
-          <div class="kpi-subtext-v">
-            {% if renda_extra > 0 %}+ R$ {{ renda_extra|floatformat:0 }} extras{% else %}Apenas fixo{% endif %}
-          </div>
-        </div>
 
-        <div class="kpi-card-vertical theme-expense">
-          <i class="bi bi-cart4 kpi-icon-overlay"></i>
-          <div class="kpi-label-v">Total Saídas</div>
-          <div class="kpi-value-v">R$ {{ saidas_totais|floatformat:2 }}</div>
-          <div class="kpi-subtext-v">Mês selecionado</div>
-        </div>
-
-        <div class="kpi-card-vertical theme-invest">
-          <i class="bi bi-graph-up-arrow kpi-icon-overlay"></i>
-          <div class="kpi-label-v">Investimentos</div>
-          <div class="kpi-value-v">R$ {{ investimentos_totais|floatformat:2 }}</div>
-          <div class="kpi-subtext-v">Total acumulado no mês</div>
-        </div>
-
-        <div class="kpi-card-vertical theme-balance">
-          <i class="bi bi-bank kpi-icon-overlay"></i>
-          <div class="kpi-label-v">Saldo Disponível</div>
-          <div class="kpi-value-v {% if saldo < 0 %}text-danger{% endif %}">
-            R$ {{ saldo|floatformat:2 }}
-          </div>
-          <div class="kpi-subtext-v">Em caixa</div>
-        </div>
-        <div class="kpi-card-vertical" style="background: #475569; border-left-color: #cbd5e1;">
-          <i class="bi bi-calendar-event kpi-icon-overlay"></i>
-          <div class="kpi-label-v">Lançamentos Futuros</div>
-          <div class="kpi-value-v">R$ {{ lancamentos_futuros|floatformat:2 }}</div>
-          <div class="kpi-subtext-v">A vencer nos próximos meses</div>
-        </div>
-      </aside>
-      <main class="charts-area">
-        <div class="row g-3 mb-3">
-            <div class="col-xl-7">
+    <div class="row g-4">
+        <div class="col-xl-8">
             <div class="chart-card h-100">
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
-                <div>
-                    <h5 class="chart-title mb-0">Evolução de Despesas</h5>
-                    <span class="text-muted small">{{ titulo_evo }}</span>
-                </div>
-                <div class="d-flex justify-content-start justify-content-md-end">
-                    <div class="btn-group btn-group-filter" role="group" aria-label="Intervalo de meses">
-                    <a href="?range=6m{% if escopo_mes != 'atual' %}&scope={{ escopo_mes }}{% endif %}"
-                        class="btn btn-outline-secondary {% if periodo_filtro == '6m' %}active{% endif %}">
-                        6 meses
-                    </a>
-                    <a href="?range=12m{% if escopo_mes != 'atual' %}&scope={{ escopo_mes }}{% endif %}"
-                      class="btn btn-outline-secondary {% if periodo_filtro == '12m' %}active{% endif %}">
-                        1 ano
-                    </a>
-
-                    <a href="?range=future{% if escopo_mes != 'atual' %}&scope={{ escopo_mes }}{% endif %}"
-                        class="btn btn-outline-secondary {% if periodo_filtro == 'future' %}active{% endif %}">
-                        Futuro
-                    </a>
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                    <h5 class="chart-title mb-0">Evolução Financeira</h5>
+                    <div class="btn-group btn-group-sm btn-group-filter">
+                        <a href="?range=6m{% if escopo_mes != 'atual' %}&scope={{ escopo_mes }}{% endif %}" class="btn {% if periodo_filtro == '6m' %}active{% endif %}">6 Meses</a>
+                        <a href="?range=12m{% if escopo_mes != 'atual' %}&scope={{ escopo_mes }}{% endif %}" class="btn {% if periodo_filtro == '12m' %}active{% endif %}">1 Ano</a>
                     </div>
                 </div>
-                </div>
-                <div id="chart-evo" class="chart-container"></div>
-            </div>
-            </div>
-            <div class="col-xl-5">
-            <div class="chart-card h-100">
-                <h5 class="chart-title mb-0">Investimentos x Despesas (%)</h5>
-                <p class="text-muted small mb-3">Proporção sobre o total de cada mês</p>
-                <div id="chart-invest-desp" class="chart-container"></div>
-            </div>
+                <div id="chart-evo" class="chart-container" style="height: 320px;"></div>
             </div>
         </div>
-        <div class="row g-3">
-            <div class="col-lg-4">
+
+        <div class="col-xl-4">
+             <div class="chart-card h-100">
+                <h5 class="chart-title mb-3">Onde gastei este mês?</h5>
+                <div id="chart-pizza" class="chart-container" style="height: 320px;"></div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
             <div class="chart-card h-100">
-                <h5 class="chart-title mb-3">Distribuição (Categorias)</h5>
-                <div id="chart-pizza" class="chart-container"></div>
+                <h5 class="chart-title mb-3">Fluxo de Caixa (Entradas vs Saídas)</h5>
+                <div id="chart-fluxo" class="chart-container" style="height: 300px;"></div>
             </div>
-            </div>
-            <div class="col-lg-4">
-            <div class="chart-card h-100">
-                <h5 class="chart-title mb-1">Top 5 Maiores Gastos</h5>
-                <p class="text-muted small mb-3">Últimos 12 meses</p>
-                <div id="chart-top5" class="chart-container"></div>
-            </div>
-            </div>
-            <div class="col-lg-4">
+        </div>
+
+        <div class="col-lg-6">
             <div class="chart-card h-100">
                 <h5 class="chart-title mb-3">Orçado vs Realizado</h5>
-                <div id="chart-orc" class="chart-container"></div>
-            </div>
+                <div id="chart-orc" class="chart-container" style="height: 300px;"></div>
             </div>
         </div>
-      </main>
     </div>
+
   </div>
 </div>
+
 {% if graficos %}
 <script id="d-evo" type="application/json">{{ graficos.evolucao_despesas|safe }}</script>
-<script id="d-invest-desp" type="application/json">{{ graficos.invest_despesas_pct|safe }}</script>
+<script id="d-fluxo" type="application/json">{{ graficos.entradas_vs_saidas|safe }}</script>
 <script id="d-pizza" type="application/json">{{ graficos.pizza_mes|safe }}</script>
-<script id="d-top5" type="application/json">{{ graficos.top5_cat|safe }}</script>
 <script id="d-orc" type="application/json">{{ graficos.orcado_realizado|safe }}</script>
 <script src="{% static 'js/dashboard.js' %}"></script>
 {% endif %}

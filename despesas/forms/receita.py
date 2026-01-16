@@ -9,15 +9,11 @@ class ReceitaForm(forms.ModelForm):
         error_messages={'required': 'O valor bruto é obrigatório.'}
     )
     
-    valor_investimento = forms.DecimalField(
-        label="Investimento / Retenção (R$)", 
-        max_digits=10, decimal_places=2, localize=True, required=False,
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "0,00"})
-    )
+    # valor_investimento = forms.DecimalField(label="Investimento / Retenção (R$)", max_digits=10, decimal_places=2, localize=True, required=False, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "0,00"}))
 
     class Meta:
         model = Receita
-        fields = ["descricao", "valor_bruto", "valor_investimento", "data", "observacoes"]
+        fields = ["descricao", "valor_bruto", "data", "observacoes"]
         widgets = {
             "descricao": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex: Salário Mensal"}),
             "data": forms.DateInput(format='%Y-%m-%d', attrs={"class": "form-control", "type": "date"}),

@@ -2,7 +2,7 @@ from .categoria import CategoriaForm
 from .despesa import DespesaForm, ItemDespesaForm, ItemDespesaFormSet
 from .leitura_nf import UploadNFeForm
 from .receita import ReceitaForm
-from .configuracao import ConfiguracaoRendaForm, LimitesGastosForm
+from .configuracao import ConfiguracaoNotificacaoForm, ConfiguracaoRendaForm
 
 
 __all__ = [
@@ -12,6 +12,6 @@ __all__ = [
     "ItemDespesaFormSet",
     "UploadNFeForm",
     "ReceitaForm",
-    "ConfiguracaoRendaForm",
-    "LimitesGastosForm",
+    "ConfiguracaoNotificacaoForm",
+    "ConfiguracaoRendaForm"
 ]

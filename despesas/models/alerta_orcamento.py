@@ -9,7 +9,7 @@ class AlertaOrcamento(models.Model):
     perfil = models.ForeignKey(Usuario, on_delete=models.CASCADE)
     ano = models.IntegerField()
     mes = models.IntegerField()
-    percentual = models.PositiveIntegerField()  # 30, 50, 70, 80, 90, 100
+    percentual = models.PositiveIntegerField() 
     enviado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:

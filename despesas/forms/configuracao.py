@@ -19,19 +19,11 @@ class ConfiguracaoRendaForm(forms.ModelForm):
         model = Usuario
         fields = ["renda_fixa", "investimento_fixo"]
 
-class LimitesGastosForm(forms.ModelForm):
-    limite_mensal = forms.DecimalField(
-        label="Teto Máximo de Gastos (Meta Final)",
-        max_digits=10, decimal_places=2, localize=True, required=False,
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "0,00"})
-    )
-    
-    limite_aviso = forms.DecimalField(
-        label="Alerta de Atenção (Notificação)",
-        max_digits=10, decimal_places=2, localize=True, required=False,
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "0,00"})
-    )
-
+class ConfiguracaoNotificacaoForm(forms.ModelForm):
     class Meta:
         model = Usuario
-        fields = ["limite_mensal", "limite_aviso"]
+        fields = ['alertas_email_ativos', 'limiares_alerta']
+        widgets = {
+            'alertas_email_ativos': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'limiares_alerta': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 50, 80, 90, 100'}),
+        }

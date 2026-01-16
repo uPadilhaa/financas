@@ -1,10 +1,25 @@
 document.addEventListener("DOMContentLoaded", function () {
     const chartMap = {
         "chart-evo": "d-evo",
-        "chart-invest-desp": "d-invest-desp",
+        "chart-fluxo": "d-fluxo", 
         "chart-pizza": "d-pizza",
-        "chart-top5": "d-top5",
         "chart-orc": "d-orc",
+    };
+
+    const PLOT_CONFIG = {
+        responsive: true,
+        displayModeBar: false,       
+        scrollZoom: false,           
+        doubleClick: false,          
+        showAxisDragHandles: false,  
+        staticPlot: false,           
+        displaylogo: false
+    };
+
+    const LAYOUT_OVERRIDE = {
+        dragmode: false, 
+        xaxis: { fixedrange: true }, 
+        yaxis: { fixedrange: true }  
     };
 
     function renderChart(containerId, scriptId) {
@@ -13,13 +28,12 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!container || !scriptElement) return;
 
         try {
-            const fig = JSON.parse(scriptElement.textContent);
-            const config = {
-                responsive: true,
-                displayModeBar: false,
-                scrollZoom: false,
-            };
-            Plotly.newPlot(container, fig.data, fig.layout, config);
+            const fig = JSON.parse(scriptElement.textContent);            
+            const finalLayout = { ...fig.layout, ...LAYOUT_OVERRIDE };
+            if(fig.layout.xaxis) finalLayout.xaxis = { ...fig.layout.xaxis, fixedrange: true };
+            if(fig.layout.yaxis) finalLayout.yaxis = { ...fig.layout.yaxis, fixedrange: true };
+
+            Plotly.newPlot(container, fig.data, finalLayout, PLOT_CONFIG);
         } catch (e) {
             console.error("Erro ao renderizar gráfico:", containerId, e);
         }

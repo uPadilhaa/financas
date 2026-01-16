@@ -8,7 +8,6 @@ from despesas.models import AlertaOrcamento, Usuario
 from despesas.services.orcamento import calcular_orcamento_mensal
 
 logger = logging.getLogger(__name__)
-LIMIARES_PADRAO = list(range(15, 501, 15))
 
 MESES_PT = {
     1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
@@ -21,16 +20,16 @@ def formatar_real(valor: float) -> str:
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def _obter_configuracao_mensagem(limiar: int) -> dict:
-    """Retorna a 'personalidade' da mensagem (cores, textos) baseada no uso."""
-    if limiar <= 45:
+    """Retorna a 'personalidade' da mensagem baseada no nível de alerta."""
+    if limiar <= 50:
         return {
             "cor": "#3dc944",  
             "emoji": "🌱",
-            "titulo": "Tudo fluindo bem!",
+            "titulo": "Tudo sob controle!",
             "subtitulo": f"Você utilizou {limiar}% do orçamento. Segue o plano!",
             "dicas": [
-                "Ótimo controle! Continue acompanhando suas metas.",
-                "Que tal verificar se seus investimentos mensais já foram feitos?",
+                "Ótimo controle! Continue acompanhando.",
+                "Verifique se todas as contas do mês já foram lançadas.",
             ]
         }
     elif limiar <= 75:
@@ -41,7 +40,6 @@ def _obter_configuracao_mensagem(limiar: int) -> dict:
             "subtitulo": f"Opa! Você chegou a {limiar}% do limite.",
             "dicas": [
                 "Hora de pisar no freio com gastos supérfluos.",
-                "Verifique se ainda existem contas fixas para cair este mês.",
                 "Evite novas compras parceladas por enquanto."
             ]
         }
@@ -53,8 +51,7 @@ def _obter_configuracao_mensagem(limiar: int) -> dict:
             "subtitulo": f"Cuidado! {limiar}% tomado. O orçamento vai fechar?",
             "dicas": [
                 "Pare gastos não essenciais IMEDIATAMENTE.",
-                "Revise o extrato: tem algo que pode ser cancelado ou adiado?",
-                "Se ultrapassar 100%, você começará a usar suas reservas."
+                "Revise o extrato: tem algo que pode ser cancelado?",
             ]
         }
     else:
@@ -62,21 +59,22 @@ def _obter_configuracao_mensagem(limiar: int) -> dict:
             "cor": "#dc3545",  
             "emoji": "🔥",
             "titulo": "Orçamento Estourado!",
-            "subtitulo": f"Você atingiu {limiar}% do planejado. Atenção máxima!",
+            "subtitulo": f"Você atingiu {limiar}% do planejado.",
             "dicas": [
-                "Você está gastando mais do que planejou ganhar/gastar.",
-                "Não faça novas dívidas. O foco agora é contenção de danos.",
-                "Ajuste seu orçamento do próximo mês para cobrir este furo."
+                "Você está gastando mais do que planejou.",
+                "Não faça novas dívidas. O foco agora é contenção.",
+                "Ajuste seu orçamento do próximo mês."
             ]
         }
 
 def enviar_email_alerta(perfil: Usuario, limiar: int, dados_orcamento: dict, link_despesas: str):
+    """Monta o HTML e envia o e-mail."""
     orcamento = dados_orcamento["orcamento"]
     total_despesas = dados_orcamento["total_despesas"]
     saldo = orcamento - total_despesas
     mes_nome = MESES_PT.get(dados_orcamento["mes"])
     ano = dados_orcamento["ano"]    
-    config = _obter_configuracao_mensagem(limiar)    
+    config = _obter_configuracao_mensagem(limiar)
     percentual_css = f"{min(dados_orcamento['percentual_usado'], 100):.1f}".replace(",", ".")
     context = {
         'titulo': config['titulo'],
@@ -95,35 +93,34 @@ def enviar_email_alerta(perfil: Usuario, limiar: int, dados_orcamento: dict, lin
         'percentual_barra': percentual_css,                      
         'link_despesas': link_despesas
     }
+
     try:
         html_body = render_to_string('emails/alerta_orcamento.html', context)
         texto_puro = strip_tags(html_body)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Erro renderizando template de email: {e}")
         html_body = f"<h1>{config['titulo']}</h1><p>Você atingiu {limiar}% do orçamento.</p>"
         texto_puro = f"Você atingiu {limiar}% do orçamento."
     
     assunto = f"[BpCash] {config['emoji']} Alerta: {limiar}% do orçamento de {mes_nome}"
+
     try:
-        send_mail(
-            subject=assunto,
-            message=texto_puro,
-            html_message=html_body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[perfil.user.email],
-            fail_silently=False,
-        )
+        send_mail(subject=assunto, message=texto_puro, html_message=html_body, from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[perfil.user.email], fail_silently=False,)
         return True
     except Exception as e:
         logger.error(f"Erro ao enviar email para {perfil.user.email}: {e}")
         return False
 
 def verificar_e_disparar_alertas_orcamento(perfil: Usuario, data_referencia=None, base_url: str | None = None):
+    """
+    Lógica principal: Verifica as configs do usuário, calcula gastos e envia o maior alerta pendente.
+    """
     if not getattr(perfil, "alertas_email_ativos", True):
         return
 
     info = calcular_orcamento_mensal(perfil, data_referencia=data_referencia)    
     orcamento = info["orcamento"]
-    percentual = info["percentual_usado"]
+    percentual_atual = info["percentual_usado"]
     ano = info["ano"]
     mes = info["mes"]
     if orcamento <= 0:
@@ -133,35 +130,35 @@ def verificar_e_disparar_alertas_orcamento(perfil: Usuario, data_referencia=None
         perfil=perfil, 
         ano=ano, 
         mes=mes, 
-        percentual__gt=percentual  
+        percentual__gt=percentual_atual  
     ).delete()
 
-    limiares_atingidos = [p for p in LIMIARES_PADRAO if percentual >= p]    
+    if hasattr(perfil, 'get_limiares_list'):
+        limiares_usuario = perfil.get_limiares_list()
+    else:
+        limiares_usuario = [80, 90, 100] 
+
+    limiares_atingidos = [p for p in limiares_usuario if percentual_atual >= p]    
     if not limiares_atingidos:
         return
 
     limiar_maximo = max(limiares_atingidos)
-    ja_enviado = AlertaOrcamento.objects.filter(
-        perfil=perfil, 
-        ano=ano, 
-        mes=mes, 
-        percentual__gte=limiar_maximo
-    ).exists()
+    ja_enviado = AlertaOrcamento.objects.filter(perfil=perfil, ano=ano, mes=mes, percentual__gte=limiar_maximo).exists()
 
     if ja_enviado:
         return
 
-    path = reverse("listar_despesa")
+    path_url = reverse("listar_despesa")
     qs = f"?mes={mes}&ano={ano}"
     if base_url:
-        link_despesas = f"{base_url.rstrip('/')}{path}{qs}"
+        link_despesas = f"{base_url.rstrip('/')}{path_url}{qs}"
     else:
         site_url = getattr(settings, "SITE_URL", "http://127.0.0.1:8000").rstrip("/")
-        link_despesas = f"{site_url}{path}{qs}"
+        link_despesas = f"{site_url}{path_url}{qs}"
 
     sucesso = enviar_email_alerta(perfil, limiar_maximo, info, link_despesas)
-
     if sucesso:
         AlertaOrcamento.objects.create(
             perfil=perfil, ano=ano, mes=mes, percentual=limiar_maximo
         )
+        logger.info(f"Alerta de orçamento ({limiar_maximo}%) enviado para {perfil.user.email}")
