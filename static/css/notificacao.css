@@ -1,0 +1,9 @@
+.form-check-input {
+    width: 3em;
+    height: 1.5em;
+    margin-left: 0 !important;
+    cursor: pointer;
+}
+.form-check {
+    padding-left: 0;
+}

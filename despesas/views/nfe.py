@@ -11,7 +11,6 @@ from django.utils import timezone
 from django import forms
 import pdfplumber
 from io import BytesIO
-
 from despesas.models import ItemDespesa, Categoria, Despesa
 from despesas.forms import DespesaForm, UploadNFeForm, ItemDespesaForm
 from despesas.enums.forma_pagamento_enum import FormaPagamento
@@ -156,16 +155,15 @@ def _extract_items_hybrid(pdf_file) -> list[dict]:
                                 qtd = _clean_float(row[col_map['qtd']]) if 'qtd' in col_map else 1.0
                                 unit = _clean_float(row[col_map['unit']]) if 'unit' in col_map else total
 
-                                if qtd == 0:
-                                    qtd = 1.0
-                                if unit == 0:
-                                    unit = total / qtd
+                                if qtd == 0: qtd = 1.0
+                                if unit == 0: unit = total / qtd
 
                                 itens.append({
                                     "nome": desc,
                                     "qtd": qtd,
                                     "vl_unit": unit,
-                                    "vl_total": total
+                                    "vl_total": total,
+                                    "unidade": "UN" # Default PDF
                                 })
                             except Exception:
                                 pass
@@ -200,11 +198,7 @@ def _extract_items_hybrid(pdf_file) -> list[dict]:
                 for line in lines:
                     if re.search(r"DADOS DO\S* PRODUTO", line, re.I):
                         continue
-                    if re.match(
-                        r"^(CÓDIGO|PRODUTO|NCM/SH|NCM|SH|CST|CFOP|UNID|QTD|VLR|VALOR|BC|ICMS|IPI|ALIQ)",
-                        line,
-                        re.I,
-                    ):
+                    if re.match(r"^(CÓDIGO|PRODUTO|NCM/SH|NCM|SH|CST|CFOP|UNID|QTD|VLR|VALOR|BC|ICMS|IPI|ALIQ)", line, re.I,):
                         continue
                     ncm_match = re.search(r"\b\d{8}\b", line.replace(".", ""))
                     if ncm_match:
@@ -214,14 +208,12 @@ def _extract_items_hybrid(pdf_file) -> list[dict]:
                             desc_parts.append(" ".join(buffer_desc))
                         if prefix:
                             desc_parts.append(prefix)
-
                         pending_item = {}
                         if desc_parts:
                             pending_item["nome"] = _clean_description(" ".join(desc_parts))
                         buffer_desc = []
                         tail = line[ncm_match.end():]
                         tokens = tail.split()
-
                         numeric_tokens: list[tuple[str, float | str]] = []
                         for t in tokens:
                             if re.fullmatch(r"(UN|UNID\.?|PC|PÇ|PÇS|KG|G|UNIDADE)", t.upper()):
@@ -267,6 +259,7 @@ def _extract_items_hybrid(pdf_file) -> list[dict]:
                                 "qtd": float(qtd or 1.0),
                                 "vl_unit": float(unit or 0.0),
                                 "vl_total": float(total),
+                                "unidade": "UN"
                             })
                             pending_item = {}
                             waiting_values = False
@@ -275,12 +268,10 @@ def _extract_items_hybrid(pdf_file) -> list[dict]:
                     else:
                         if waiting_values:
                             continue
-
                         if not re.match(r"^[\d\.,/\s-]+$", line):
                             buffer_desc.append(line)
-
     except Exception as e:
-        print(f"Erro Parse: {e}")
+        print(f"Erro Parse PDF: {e}")
 
     return itens
 
@@ -293,14 +284,14 @@ def _parse_nfe_danfe_pdf(uploaded_file) -> dict:
     try:
         with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
             for page in pdf.pages: full_text += "\n" + (page.extract_text() or "")
-    except: pass
+    except: pass    
     emitente = "Consumidor"
     m_emit = re.search(r"RECEBEMOS\s+DE\s+(.*?)\s+OS\s+PRODUTOS", full_text, re.S | re.I)
     if m_emit: emitente = m_emit.group(1).strip().replace("\n", " ")
     else:
         for l in full_text.split('\n')[:15]:
             if len(l) > 3 and any(x in l.upper() for x in ["LTDA", "S.A.", "COMERCIO", "KABUM", "WEBSHOP"]):
-                emitente = l.strip(); break
+                emitente = l.strip(); break    
     cnpj = None
     digits = re.sub(r'\D', '', full_text)
     keys = re.findall(r'(\d{44})', digits)
@@ -343,15 +334,13 @@ def _scrape_NFe_page(url: str) -> dict:
     try:
         resp = requests.get(url, headers=headers, timeout=20)
         resp.raise_for_status()
-    except Exception: return {}
-    
+    except Exception: return {}    
     soup = BeautifulSoup(resp.text, "html.parser")    
     emitente = "Consumidor"
     cnpj = None
     div_topo = soup.find("div", class_="txtTopo")
     if div_topo: emitente = div_topo.get_text(strip=True)    
-    texto = soup.get_text(" ", strip=True)
-    
+    texto = soup.get_text(" ", strip=True)    
     m_cnpj = re.search(r"CNPJ[:\s]*(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})", texto)
     if m_cnpj and _is_valid_cnpj(m_cnpj.group(1)):
         cnpj = m_cnpj.group(1)
@@ -361,6 +350,7 @@ def _scrape_NFe_page(url: str) -> dict:
     if mensagem_data:
         try: data_emissao = dateparser.parse(mensagem_data.group(1), dayfirst=True).date()
         except: pass
+    
     valor_total_nota = 0.0
     desconto = 0.0
     
@@ -382,8 +372,7 @@ def _scrape_NFe_page(url: str) -> dict:
 
     forma_pagamento_key = ''
     parcelas = 1    
-    pagamentos_encontrados = []
-    
+    pagamentos_encontrados = []    
     if div_total:
         linha_forma = div_total.find("div", id="linhaForma")
         if linha_forma:
@@ -414,26 +403,33 @@ def _scrape_NFe_page(url: str) -> dict:
     if table:
         rows = table.find_all("tr")
         for row in rows:
-            if not row.get("id", "").startswith("Item"): continue
-            
+            if not row.get("id", "").startswith("Item"): continue            
             span_desc = row.find("span", class_="txtTit")
-            nome = span_desc.get_text(strip=True) if span_desc else "Item"
-            
-            row_text = row.get_text(" ", strip=True)
-            
+            nome = span_desc.get_text(strip=True) if span_desc else "Item"            
+            span_qtd = row.find("span", class_="Rqtd")
             qtd = 1.0
-            m_q = re.search(r"Qtde\.?:?\s*([\d.,]+)", row_text)
-            if m_q: qtd = _clean_float(m_q.group(1))
+            if span_qtd:
+                txt_qtd = span_qtd.get_text(strip=True).replace("Qtde.:", "").strip()
+                qtd = _clean_float(txt_qtd)
             
+            span_un = row.find("span", class_="RUN")
+            unidade = "UN"
+            if span_un:
+                txt_un = span_un.get_text(strip=True).upper().replace("UN:", "").strip()
+                if txt_un:
+                    unidade = txt_un
+            
+            span_vunit = row.find("span", class_="RvlUnit")
             vl_unit = 0.0
-            m_vu = re.search(r"Vl\.? Unit\.?:?\s*([\d.,]+)", row_text)
-            if m_vu: vl_unit = _clean_float(m_vu.group(1))
-            
-            vl_total_item = 0.0
+            if span_vunit:
+                txt_vu = span_vunit.get_text(strip=True).replace("Vl. Unit.:", "").strip()
+                vl_unit = _clean_float(txt_vu)            
             span_val = row.find("span", class_="valor")
+            vl_total_item = 0.0
             if span_val:
-                vl_total_item = _clean_float(span_val.get_text())
+                vl_total_item = _clean_float(span_val.get_text(strip=True))
             else:
+                row_text = row.get_text(" ", strip=True)
                 m_vt = re.search(r"Vl\.?\s*Total[:\s]*R?\$?\s*([\d.,]+)", row_text, re.I)
                 if m_vt: vl_total_item = _clean_float(m_vt.group(1))
                 else: vl_total_item = qtd * vl_unit
@@ -441,6 +437,7 @@ def _scrape_NFe_page(url: str) -> dict:
             itens_estruturados.append({
                 "nome": nome,
                 "qtd": qtd,
+                "unidade": unidade,
                 "vl_unit": vl_unit,
                 "vl_total": vl_total_item
             })
@@ -465,8 +462,7 @@ def importar_NFe(request):
 
         arquivo = form.cleaned_data["imagem"]
         content_type = (arquivo.content_type or "").lower()
-        filename = (arquivo.name or "").lower()
-        
+        filename = (arquivo.name or "").lower()        
         scraped = {}
         url = None
         is_pdf = content_type == 'application/pdf' or filename.endswith('.pdf')
@@ -480,8 +476,7 @@ def importar_NFe(request):
                 scraped = _scrape_NFe_page(url)
         
         emitente = scraped.get("emitente") or ""
-        pagamento_detectado = scraped.get("forma_pagamento_key")
-        
+        pagamento_detectado = scraped.get("forma_pagamento_key")        
         initial_data = {
             "emitente_nome": emitente,
             "emitente_cnpj": scraped.get("cnpj") or "",
@@ -495,15 +490,15 @@ def importar_NFe(request):
             "observacoes": f"Importado via QR Code.\nLink SEFAZ: {url}" if (url and not is_pdf) else "Importado via arquivo."
         }
 
-        form_desp = DespesaForm(user=request.user, initial=initial_data)
-        
+        form_desp = DespesaForm(user=request.user, initial=initial_data)        
         initial_itens = []
         for item in scraped.get("itens", []):
             initial_itens.append({
                 'nome': item['nome'],
-                'quantidade': item['qtd'],
-                'valor_unitario': item['vl_unit'],
-                'valor_total': item['vl_total']
+                'quantidade': str(item['qtd']).replace('.', ','), 
+                'unidade': item.get('unidade', 'UN'), 
+                'valor_unitario': str(item['vl_unit']).replace('.', ','),
+                'valor_total': str(item['vl_total']).replace('.', ',')
             })
             
         qtd_itens = len(initial_itens) or 1

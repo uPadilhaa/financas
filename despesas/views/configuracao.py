@@ -1,7 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.views.decorators.http import require_POST
 from despesas.forms.configuracao import ConfiguracaoRendaForm, ConfiguracaoNotificacaoForm 
 from despesas.models import Usuario
 
@@ -22,15 +21,18 @@ def configurar_financas(request):
 
 @login_required
 def configurar_notificacoes(request):
-    perfil, _ = Usuario.objects.get_or_create(user=request.user)
-
+    perfil, _ = Usuario.objects.get_or_create(user=request.user)    
+    is_modal = request.GET.get('modal') == 'true'
     if request.method == 'POST':
         form = ConfiguracaoNotificacaoForm(request.POST, instance=perfil)
         if form.is_valid():
             form.save()
             messages.success(request, "Preferências de notificação atualizadas!")
-            return redirect('configurar_notificacoes')
+            return redirect('listar_despesa')
     else:
         form = ConfiguracaoNotificacaoForm(instance=perfil)
 
+    if is_modal:
+        return render(request, 'configuracao_notificacoes_modal.html', {'form': form})
+    
     return render(request, 'configuracao_notificacoes.html', {'form': form})

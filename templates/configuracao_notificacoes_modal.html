@@ -1,0 +1,48 @@
+<form method="post" action="{% url 'configurar_notificacoes' %}" class="p-2">
+    {% csrf_token %}
+    
+    <div class="mb-4">
+        <div class="form-check form-switch p-0 m-0 d-flex align-items-center gap-3">
+            {{ form.alertas_email_ativos }}
+            <div>
+                <label class="form-check-label fw-bold text-dark mb-0" for="{{ form.alertas_email_ativos.id_for_label }}">
+                    Alertas por E-mail
+                </label>
+                <div class="text-muted small lh-sm mt-1">
+                    Receba avisos quando o orçamento atingir os limites definidos.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label class="form-label fw-bold small text-muted text-uppercase mb-2">
+            <i class="bi bi-graph-up-arrow me-1"></i> Porcentagens de Alerta
+        </label>
+        <div class="input-group">
+            <span class="input-group-text bg-white text-muted"><i class="bi bi-percent"></i></span>
+            {{ form.limiares_alerta }}
+        </div>
+        <div class="form-text mt-1 small">
+            Ex: <strong>80, 90, 100</strong>. Separe por vírgula.
+        </div>
+    </div>
+
+    <div class="d-grid pt-2">
+        <button class="btn btn-primary fw-bold py-2" type="submit">
+            Salvar Preferências
+        </button>
+    </div>
+</form>
+
+<style>
+    .form-check-input[type="checkbox"] {
+        width: 3.2em;
+        height: 1.6em;
+        margin-left: 0 !important;
+        cursor: pointer;
+    }
+    .form-check {
+        padding-left: 0;
+    }
+</style>

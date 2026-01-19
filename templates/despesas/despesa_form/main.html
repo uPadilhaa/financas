@@ -70,8 +70,8 @@
                 <thead class="table-light text-secondary small">
                     <tr>
                         <th class="ps-3 py-2 font-monospace">PRODUTO <span class="text-danger">*</span></th>
-                        <th style="width: 80px">QTD <span class="text-danger">*</span></th>
-                        <th style="width: 110px">UNIT (R$) <span class="text-danger">*</span></th>
+                        <th style="width: 90px">QTD <span class="text-danger">*</span></th>
+                        <th style="width: 70px">UN</th> <th style="width: 110px">UNIT (R$) <span class="text-danger">*</span></th>
                         <th style="width: 110px">TOTAL (R$)</th>
                         <th style="width: 40px" class="text-center"><i class="bi bi-trash"></i></th>
                     </tr>
@@ -90,6 +90,8 @@
                             {{ item_form.quantidade }}
                              {% if item_form.quantidade.errors %}<div class="text-danger small d-block">{{ item_form.quantidade.errors.0 }}</div>{% endif %}
                         </td>
+                        <td>
+                            {{ item_form.unidade }} </td>
                         <td>
                             {{ item_form.valor_unitario }}
                              {% if item_form.valor_unitario.errors %}<div class="text-danger small d-block">{{ item_form.valor_unitario.errors.0 }}</div>{% endif %}
@@ -116,6 +118,8 @@
                     <td>
                         {{ formset.empty_form.quantidade }}
                     </td>
+                    <td>
+                        {{ formset.empty_form.unidade }} </td>
                     <td>
                         {{ formset.empty_form.valor_unitario }}
                     </td>

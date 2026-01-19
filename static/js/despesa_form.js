@@ -149,16 +149,20 @@ function removerLinhaExtraVazia() {
 function toFloat(val) {
     if (!val) return 0;
     if (typeof val === 'number') return val;
-    let str = val.toString().trim().replace('R$', '').trim();
+    let str = val.toString().replace('R$', '').replace(/\s/g, '').trim();
     if (!str) return 0;    
-    if (str.includes(',') && str.includes('.')) str = str.replace(/\./g, '').replace(',', '.');
-    else if (str.includes(',')) str = str.replace(',', '.'); 
-    
+    if (str.includes(',')) {
+        str = str.replace(/\./g, '').replace(',', '.');
+    }
     return parseFloat(str) || 0;
 }
 
 function formatMoney(val) {
     return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function formatQuantity(val) {
+    return val.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 4 });
 }
 
 function calcularLinha(row) {
@@ -179,8 +183,7 @@ function calcularLinha(row) {
     const qtd = toFloat(qtdInput.value);
     const unit = toFloat(unitInput.value);
     const total = qtd * unit;
-    
-    if (Math.abs(toFloat(totalInputItem.value) - total) > 0.01) {
+    if (Math.abs(toFloat(totalInputItem.value) - total) > 0.0001) {
         totalInputItem.value = formatMoney(total);
     }    
     return total;
