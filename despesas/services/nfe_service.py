@@ -187,6 +187,10 @@ class NFeService:
                                 try:
                                     if not row[col_map.get('total', 0)]: continue
                                     desc_raw = row[col_map['desc']] if 'desc' in col_map else "Item"
+                                    
+                                    # SANITY CHECK: Ignore rows with descriptions that look like page dumps
+                                    if len(str(desc_raw)) > 200: continue
+                                    
                                     desc = self.clean_description(str(desc_raw).replace('\n', ' '))
                                     total = self.clean_float(row[col_map['total']])
                                     if total <= 0: continue
@@ -201,7 +205,7 @@ class NFeService:
             if not itens:
                 full_text = ""
                 with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
-                    for page in pdf.pages: full_text += "\\n" + (page.extract_text() or "")
+                    for page in pdf.pages: full_text += "\n" + (page.extract_text() or "")
                 
                 m_start = re.search(r"DADOS DO[S]? PRODUTO[S]?", full_text, re.I)
                 if not m_start:
@@ -231,7 +235,7 @@ class NFeService:
                         continue
                     if re.match(r"^(CÓDIGO|PRODUTO|NCM/SH|NCM|SH|CST|CFOP|UNID|QTD|VLR|VALOR|BC|ICMS|IPI|ALIQ)", line, re.I,):
                         continue
-                    ncm_match = re.search(r"\\b\\d{8}\\b", line.replace(".", ""))
+                    ncm_match = re.search(r"\b\d{8}\b", line.replace(".", ""))
                     if ncm_match:
                         prefix = line[:ncm_match.start()].strip()
                         desc_parts = []
@@ -241,7 +245,10 @@ class NFeService:
                             desc_parts.append(prefix)
                         pending_item = {}
                         if desc_parts:
-                            pending_item["nome"] = self.clean_description(" ".join(desc_parts))
+                            final_desc = self.clean_description(" ".join(desc_parts))
+                            # SANITY CHECK: If description is suspiciously long, it's likely a parsing error
+                            if len(final_desc) < 250:
+                                pending_item["nome"] = final_desc
                         buffer_desc = []
                         tail = line[ncm_match.end():]
                         tokens = tail.split()
@@ -300,7 +307,9 @@ class NFeService:
                         if waiting_values:
                             continue
                         if not re.match(r"^[\d\.,/\s-]+$", line):
-                            buffer_desc.append(line)
+                            # SANITY CHECK: Don't buffer lines that are extremely long
+                            if len(line) < 150:
+                                buffer_desc.append(line)
 
         except Exception as e:
             logger.error(f"PDF Parse Error: {e}")
@@ -317,20 +326,37 @@ class NFeService:
         full_text = ""
         try:
             with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
-                for page in pdf.pages: full_text += "\\n" + (page.extract_text() or "")
+                for page in pdf.pages: full_text += "\n" + (page.extract_text() or "")
         except: pass    
         
         emitente = "Consumidor"
-        m_emit = re.search(r"RECEBEMOS\\s+DE\\s+(.*?)\\s+OS\\s+PRODUTOS", full_text, re.S | re.I)
-        if m_emit: emitente = m_emit.group(1).strip().replace("\\n", " ")
-        else:
-             for l in full_text.split('\\n')[:15]:
-                if len(l) > 3 and any(x in l.upper() for x in ["LTDA", "S.A.", "COMERCIO", "KABUM", "WEBSHOP"]):
-                    emitente = l.strip(); break
+        # Try finding the receipt stub text "RECEBEMOS DE ... OS PRODUTOS"
+        # We explicitly look for "OS PRODUTOS" or "OS SERVIÇOS" or "CONSTANTES" to stop the capture
+        m_emit = re.search(r"RECEBEMOS\s+DE\s+(.*?)\s+(OS\s+PRODUTOS|AS\s+MERCADORIAS|CONSTANTES)", full_text, re.S | re.I)
+        if m_emit: 
+            candidate = m_emit.group(1).strip().replace("\n", " ")
+            # If candidate is still huge, try taking just the first line or first 5 words
+            if len(candidate) > 100:
+                candidate = candidate.split('\n')[0]
+            
+            # Additional cleanup if it captured too much
+            if len(candidate) < 100:
+                emitente = candidate
+        
+        # Fallback: Scrape top lines for known Entity Types (LTDA, S.A.)
+        if emitente == "Consumidor":
+             for l in full_text.split('\n')[:25]:
+                # Heuristic: Companies often have these suffixes
+                if len(l) > 3 and len(l) < 100 and any(x in l.upper() for x in ["LTDA", "S.A.", "COMERCIO", "KABUM", "WEBSHOP", "EIRELI", "ME", "EPP"]):
+                    # Clean common prefixes like "IDENTIFICAÇÃO DO EMITENTE" or "DANFE"
+                    clean_l = re.sub(r"^(IDENTIFICAÇÃO\s+DO\s+EMITENTE|DANFE)\s*", "", l, flags=re.I).strip()
+                    if clean_l:
+                        emitente = clean_l
+                        break
 
         cnpj = None
-        digits = re.sub(r'\\D', '', full_text)
-        keys = re.findall(r'(\\d{44})', digits)
+        digits = re.sub(r'\D', '', full_text)
+        keys = re.findall(r'(\d{44})', digits)
         for key in keys:
             sub = key[6:20]
             if self.is_valid_cnpj(sub):
@@ -341,15 +367,15 @@ class NFeService:
                 if self.is_valid_cnpj(m): cnpj = m; break
         
         data_emissao = timezone.localdate()
-        m_data = re.search(r"EMISS[ÃA]O.*?\\s+(\\d{2}/\\d{2}/\\d{4})", full_text, re.I | re.S)
+        m_data = re.search(r"EMISS[ÃA]O.*?\s+(\d{2}/\d{2}/\d{4})", full_text, re.I | re.S)
         if m_data:
             try: data_emissao = dateparser.parse(m_data.group(1), dayfirst=True).date()
             except: pass
 
         valor_total_nota = 0.0
-        m_val = re.search(r"VALOR\\s+TOTAL\\s+DA\\s+NOTA(.*)", full_text, re.I | re.S)
+        m_val = re.search(r"VALOR\s+TOTAL\s+DA\s+NOTA(.*)", full_text, re.I | re.S)
         if m_val:
-            nums = re.findall(r"([\\d\\.]+,\d{2})", m_val.group(1))
+            nums = re.findall(r"([\d\.]+,\d{2})", m_val.group(1))
             if nums: valor_total_nota = self.clean_float(nums[-1])
         elif itens_estruturados:
             valor_total_nota = sum(i['vl_total'] for i in itens_estruturados)
@@ -385,12 +411,12 @@ class NFeService:
         div_topo = soup.find("div", class_="txtTopo")
         if div_topo: emitente = div_topo.get_text(strip=True)    
         texto = soup.get_text(" ", strip=True)    
-        m_cnpj = re.search(r"CNPJ[:\\s]*(\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2})", texto)
+        m_cnpj = re.search(r"CNPJ[:\s]*(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})", texto)
         if m_cnpj and self.is_valid_cnpj(m_cnpj.group(1)):
             cnpj = m_cnpj.group(1)
 
         data_emissao = timezone.localdate()
-        mensagem_data = re.search(r"Emiss[ãa]o\\s*:?\\s*(\\d{2}/\\d{2}/\\d{4})", texto, re.I)
+        mensagem_data = re.search(r"Emiss[ãa]o\s*:?\s*(\d{2}/\d{2}/\d{4})", texto, re.I)
         if mensagem_data:
             try: data_emissao = dateparser.parse(mensagem_data.group(1), dayfirst=True).date()
             except: pass
