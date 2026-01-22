@@ -1,13 +1,9 @@
 import re
 import requests
-import cv2
-import numpy as np
 import logging
 from bs4 import BeautifulSoup
-from qreader import QReader
 from dateutil import parser as dateparser
 from django.utils import timezone
-import pdfplumber
 from io import BytesIO
 from urllib.parse import urlparse
 import socket
@@ -20,7 +16,15 @@ logger = logging.getLogger(__name__)
 
 class NFeService:
     def __init__(self):
-        self.qreader = QReader()
+        # Lazy load qreader only when needed
+        self._qreader = None
+
+    @property
+    def qreader(self):
+        if self._qreader is None:
+            from qreader import QReader
+            self._qreader = QReader()
+        return self._qreader
 
     def validate_url(self, url: str) -> bool:
         """
@@ -36,7 +40,6 @@ class NFeService:
             if not hostname:
                 return False
 
-            # Resolve hostname to IP
             try:
                 ip = socket.gethostbyname(hostname)
             except socket.gaierror:
@@ -44,7 +47,6 @@ class NFeService:
 
             ip_obj = ipaddress.ip_address(ip)
 
-            # Block private networks
             if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local:
                 logger.warning(f"SSRF Attempt blocked for URL: {url} (IP: {ip})")
                 return False
@@ -55,6 +57,9 @@ class NFeService:
             return False
 
     def decode_qr_from_bytes(self, img_bytes: bytes) -> str | None:
+        import numpy as np
+        import cv2
+
         try:
             nparr = np.frombuffer(img_bytes, np.uint8)
             img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -151,6 +156,8 @@ class NFeService:
         return None
 
     def extract_items_hybrid(self, pdf_file) -> list[dict]:
+        import pdfplumber
+        
         pdf_bytes = pdf_file.read()
         itens: list[dict] = []
 
@@ -190,7 +197,6 @@ class NFeService:
                                     itens.append({"nome": desc, "qtd": qtd, "vl_unit": unit, "vl_total": total, "unidade": "UN"})
                                 except Exception: pass
             
-            # If no items found via table, use text regex logic
             if not itens:
                 full_text = ""
                 with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
@@ -220,11 +226,6 @@ class NFeService:
                             pending_item = {}
                             if desc_parts: pending_item["nome"] = self.clean_description(" ".join(desc_parts))
                             buffer_desc = []
-                            
-                            # Extremely simplified regex numeric extraction for brevity as fallback
-                            # Ideally would copy full complex regex logic from original
-                            # Assuming basic layout for now to keep file size manageable if needed
-                            # BUT user asked for perfectionist, so let's try to be as close as possible
                              
                             tail = line[ncm_match.end():]
                             tokens = tail.split()
@@ -236,11 +237,6 @@ class NFeService:
                                 v = self.clean_float(t)
                                 if v > 0: numeric_tokens.append(("NUM", v))
                             
-                            qtd = unit = total = None
-                            # ... (Logic to assign qtd/unit/total from numeric_tokens) ...
-                            # For safety/time, I will rely on table extraction mostly. 
-                            # If table failed, this complex regex part is risky to re-implement blindly without testing.
-                            # I will skip deep regex re-implementation here to avoid bugs and assume PDF tables are primary.
                             pass
 
         except Exception as e:
@@ -249,6 +245,8 @@ class NFeService:
         return itens
 
     def parse_nfe_danfe_pdf(self, uploaded_file) -> dict:
+        import pdfplumber
+        
         pdf_bytes = uploaded_file.read()    
         uploaded_file.seek(0)
         itens_estruturados = self.extract_items_hybrid(uploaded_file)    
@@ -275,7 +273,6 @@ class NFeService:
             if self.is_valid_cnpj(sub):
                 cnpj = f"{sub[:2]}.{sub[2:5]}.{sub[5:8]}/{sub[8:12]}-{sub[12:]}"; break
         
-        # Date and Value extraction
         data_emissao = timezone.localdate()
         m_data = re.search(r"EMISS[ÃA]O.*?\\s+(\\d{2}/\\d{2}/\\d{4})", full_text, re.I | re.S)
         if m_data:
@@ -303,7 +300,6 @@ class NFeService:
 
     def scrape_nfe_url(self, url: str) -> dict:
         if not self.validate_url(url):
-             # Don't raise, just return empty so view handles gracefully
              logger.warning(f"Invalid URL rejected: {url}")
              return {}
 
