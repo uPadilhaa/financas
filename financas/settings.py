@@ -113,6 +113,11 @@ LOGOUT_REDIRECT_URL = "/"
 
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
+        "APP": {
+            "client_id": config("GOOGLE_CLIENT_ID", default=""),
+            "secret": config("GOOGLE_CLIENT_SECRET", default=""),
+            "key": ""
+        },
         "SCOPE": ["openid", "email", "profile"],
         "AUTH_PARAMS": {"prompt": "consent"},
     }
