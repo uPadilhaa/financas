@@ -197,47 +197,110 @@ class NFeService:
                                     itens.append({"nome": desc, "qtd": qtd, "vl_unit": unit, "vl_total": total, "unidade": "UN"})
                                 except Exception: pass
             
+            # Use fallback text regex logic if tables failed or returned nothing
             if not itens:
                 full_text = ""
                 with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
                     for page in pdf.pages: full_text += "\\n" + (page.extract_text() or "")
                 
                 m_start = re.search(r"DADOS DO[S]? PRODUTO[S]?", full_text, re.I)
-                if m_start:
-                    search_area = full_text[m_start.end():]
-                    m_end = re.search(r"(CÁLCULO DO ISSQN|DADOS ADICIONAIS|TRANSPORTADOR)", search_area, re.I)
-                    start = m_start.start()
-                    end = m_start.end() + m_end.start() if m_end else len(full_text)
-                    lines = [l.strip() for l in full_text[start:end].splitlines() if l.strip()]
+                if not m_start:
+                    return itens
+                search_area = full_text[m_start.end():]
+                m_end = re.search(
+                    r"(CÁLCULO DO ISSQN|DADOS ADICIONAIS|TRANSPORTADOR)",
+                    search_area,
+                    re.I
+                )
 
-                    buffer_desc: list[str] = []
-                    pending_item: dict = {}
-                    waiting_values = False
+                start = m_start.start()
+                end = m_start.end() + m_end.start() if m_end else len(full_text)
 
-                    for line in lines:
-                        if re.search(r"DADOS DO\S* PRODUTO", line, re.I): continue
-                        if re.match(r"^(CÓDIGO|PRODUTO|NCM/SH|NCM|SH|CST|CFOP|UNID|QTD|VLR|VALOR|BC|ICMS|IPI|ALIQ)", line, re.I): continue
-                        ncm_match = re.search(r"\\b\\d{8}\\b", line.replace(".", ""))
-                        if ncm_match:
-                            prefix = line[:ncm_match.start()].strip()
-                            desc_parts = []
-                            if buffer_desc: desc_parts.append(" ".join(buffer_desc))
-                            if prefix: desc_parts.append(prefix)
+                lines = [
+                    l.strip()
+                    for l in full_text[start:end].splitlines()
+                    if l.strip()
+                ]
+
+                buffer_desc: list[str] = []
+                pending_item: dict = {}
+                waiting_values = False
+
+                for line in lines:
+                    if re.search(r"DADOS DO\S* PRODUTO", line, re.I):
+                        continue
+                    if re.match(r"^(CÓDIGO|PRODUTO|NCM/SH|NCM|SH|CST|CFOP|UNID|QTD|VLR|VALOR|BC|ICMS|IPI|ALIQ)", line, re.I,):
+                        continue
+                    ncm_match = re.search(r"\\b\\d{8}\\b", line.replace(".", ""))
+                    if ncm_match:
+                        prefix = line[:ncm_match.start()].strip()
+                        desc_parts = []
+                        if buffer_desc:
+                            desc_parts.append(" ".join(buffer_desc))
+                        if prefix:
+                            desc_parts.append(prefix)
+                        pending_item = {}
+                        if desc_parts:
+                            pending_item["nome"] = self.clean_description(" ".join(desc_parts))
+                        buffer_desc = []
+                        tail = line[ncm_match.end():]
+                        tokens = tail.split()
+                        numeric_tokens = []
+                        for t in tokens:
+                            if re.fullmatch(r"(UN|UNID\.?|PC|PÇ|PÇS|KG|G|UNIDADE)", t.upper()):
+                                numeric_tokens.append(("UNIT_MARK", t))
+                                continue
+                            v = self.clean_float(t)
+                            if v > 0:
+                                numeric_tokens.append(("NUM", v))
+
+                        qtd = unit = total = None
+                        try:
+                            idx_unit = next(
+                                i for i, (kind, _) in enumerate(numeric_tokens)
+                                if kind == "UNIT_MARK"
+                            )
+                            nums_after = [
+                                v for kind, v in numeric_tokens[idx_unit + 1:]
+                                if kind == "NUM"
+                            ]
+                            if nums_after:
+                                qtd = nums_after[0]
+                                if len(nums_after) >= 2:
+                                    unit = nums_after[1]
+                                if len(nums_after) >= 3:
+                                    total = nums_after[2]
+                        except StopIteration:
+                            nums_all = [v for kind, v in numeric_tokens if kind == "NUM"]
+                            if nums_all:
+                                total = nums_all[-1]
+                                if len(nums_all) >= 2:
+                                    unit = nums_all[-2]
+                                if len(nums_all) >= 3:
+                                    qtd = nums_all[-3]
+                        if total is None and unit is not None and qtd is not None:
+                            total = unit * qtd
+                        if total is not None and qtd is not None and unit is None and qtd:
+                            unit = total / qtd
+                        if qtd is None and total is not None and unit is not None and unit:
+                            qtd = total / unit
+                        if pending_item.get("nome") and total is not None:
+                            itens.append({
+                                "nome": pending_item["nome"],
+                                "qtd": float(qtd or 1.0),
+                                "vl_unit": float(unit or 0.0),
+                                "vl_total": float(total),
+                                "unidade": "UN"
+                            })
                             pending_item = {}
-                            if desc_parts: pending_item["nome"] = self.clean_description(" ".join(desc_parts))
-                            buffer_desc = []
-                             
-                            tail = line[ncm_match.end():]
-                            tokens = tail.split()
-                            numeric_tokens = []
-                            for t in tokens:
-                                if re.fullmatch(r"(UN|UNID\.?|PC|PÇ|PÇS|KG|G|UNIDADE)", t.upper()):
-                                    numeric_tokens.append(("UNIT_MARK", t))
-                                    continue
-                                v = self.clean_float(t)
-                                if v > 0: numeric_tokens.append(("NUM", v))
-                            
-                            pass
+                            waiting_values = False
+                        else:
+                            waiting_values = True
+                    else:
+                        if waiting_values:
+                            continue
+                        if not re.match(r"^[\d\.,/\s-]+$", line):
+                            buffer_desc.append(line)
 
         except Exception as e:
             logger.error(f"PDF Parse Error: {e}")
@@ -272,6 +335,10 @@ class NFeService:
             sub = key[6:20]
             if self.is_valid_cnpj(sub):
                 cnpj = f"{sub[:2]}.{sub[2:5]}.{sub[5:8]}/{sub[8:12]}-{sub[12:]}"; break
+        if not cnpj:
+            ms = re.findall(r"(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})", full_text[:3000])
+            for m in ms:
+                if self.is_valid_cnpj(m): cnpj = m; break
         
         data_emissao = timezone.localdate()
         m_data = re.search(r"EMISS[ÃA]O.*?\\s+(\\d{2}/\\d{2}/\\d{4})", full_text, re.I | re.S)
