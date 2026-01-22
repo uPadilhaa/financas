@@ -5,3 +5,4 @@ from .receita import listar_receitas, criar_receita, editar_receita, deletar_rec
 from .nfe import importar_NFe
 from .configuracao import configurar_notificacoes, configurar_financas
 from .dashboard import dashboard
+from .onboarding import onboarding_renda, onboarding_notificacoes

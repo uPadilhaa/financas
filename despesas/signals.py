@@ -1,51 +1,36 @@
-import threading
-import logging
-from django.db.models.signals import post_save, post_delete
-from django.dispatch import receiver
-from django.db import transaction
-from despesas.models import Despesa, Usuario
+# Arquivo: despesas/middleware.py
+from django.shortcuts import redirect
+from django.urls import reverse
+from despesas.models import Usuario
 
-logger = logging.getLogger(__name__)
+class OnboardingMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
 
-def _executar_verificacao_background(perfil_id, data_ref):
-    """
-    Função que roda em segundo plano (background).
-    Ela abre sua própria conexão com o banco e faz o envio do e-mail
-    sem travar o usuário.
-    """
-    from despesas.services.notificacoes_orcamento import verificar_e_disparar_alertas_orcamento
-    from despesas.models import Usuario
+    def __call__(self, request):
+        urls_permitidas = [
+            reverse('account_login'),
+            reverse('account_logout'),
+            reverse('account_signup'),
+            reverse('onboarding_renda'),
+            reverse('onboarding_notificacoes'),
+            '/admin/',
+            '/accounts/', 
+        ]
 
-    try:
-        perfil = Usuario.objects.get(id=perfil_id)
-        verificar_e_disparar_alertas_orcamento(perfil=perfil, data_referencia=data_ref)
-    except Exception as e:
-        logger.error(f"Erro ao processar alerta em background: {e}")
+        if request.user.is_authenticated:
+            path = request.path_info            
+            if any(path.startswith(u) for u in urls_permitidas):
+                return self.get_response(request)
 
-@receiver(post_save, sender=Despesa)
-def disparar_alerta_orcamento_ao_salvar_despesa(sender, instance: Despesa, **kwargs):
-    if not instance.user:
-        return
-    perfil, _ = Usuario.objects.get_or_create(user=instance.user)
-    perfil_id = perfil.id
-    data_ref = instance.data
-    transaction.on_commit(lambda: threading.Thread(
-        target=_executar_verificacao_background,
-        args=(perfil_id, data_ref),
-        daemon=True 
-    ).start())
+            try:
+                perfil = Usuario.objects.get(user=request.user)                
+                if not perfil.renda_fixa or perfil.renda_fixa == 0:
+                    return redirect('onboarding_renda')
 
-@receiver(post_delete, sender=Despesa)
-def disparar_alerta_orcamento_ao_excluir_despesa(sender, instance: Despesa, **kwargs):
-    if not instance.user:
-        return
+            except Usuario.DoesNotExist:
+                Usuario.objects.create(user=request.user)
+                return redirect('onboarding_renda')
 
-    perfil, _ = Usuario.objects.get_or_create(user=instance.user)
-    perfil_id = perfil.id
-    data_ref = instance.data
-
-    transaction.on_commit(lambda: threading.Thread(
-        target=_executar_verificacao_background,
-        args=(perfil_id, data_ref),
-        daemon=True
-    ).start())
+        response = self.get_response(request)
+        return response

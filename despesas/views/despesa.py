@@ -168,13 +168,13 @@ def editar_despesa(request, pk: int):
         
         if form.is_valid() and formset.is_valid():
             with transaction.atomic():
-                form.save()
-                formset.save()
-                despesa.refresh_from_db()
-                despesa.qtd_total_itens = despesa.itens.count()
-                despesa.save()
+                despesa_salva = form.save()
+                formset.save()                
+                qtd_itens = despesa_salva.itens.count()                
+                if despesa_salva.qtd_total_itens != qtd_itens:
+                    Despesa.objects.filter(pk=despesa_salva.pk).update(qtd_total_itens=qtd_itens)
             
-            messages.success(request, "Despesa atualizada!", extra_tags="despesa")            
+            messages.success(request, "Despesa atualizada!", extra_tags="despesa")                    
             if request.headers.get('x-requested-with') == 'XMLHttpRequest':
                  return JsonResponse({'success': True})
             
@@ -183,6 +183,7 @@ def editar_despesa(request, pk: int):
             print("ERRO DE VALIDAÇÃO:")
             print("Form:", form.errors)
             print("Formset:", formset.errors)
+            pass
     else:
         form = DespesaForm(instance=despesa, user=request.user)
         formset = ItemDespesaFormSet(instance=despesa, prefix="itens")

@@ -22,4 +22,6 @@ urlpatterns = [
     path("receitas/<int:pk>/editar/", v.editar_receita, name="receita_editar"),
     path("receitas/<int:pk>/deletar/", v.deletar_receita, name="receita_deletar"),
     path("importar/NFe/", v.importar_NFe, name="despesa_importar_nfe"),
+    path('primeiros-passos/renda/', v.onboarding_renda, name='onboarding_renda'),
+    path('primeiros-passos/alertas/', v.onboarding_notificacoes, name='onboarding_notificacoes'),
 ]

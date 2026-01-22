@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<link href="{% static 'css/onboarding.css' %}" rel="stylesheet">
+
+<section class="py-5 bg-light min-vh-100 d-flex align-items-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-5 fade-in-up">
+                
+                <div class="text-center mb-4">
+                    <div class="mb-3">
+                        <span class="bg-white p-3 rounded-circle shadow-sm">
+                            <i class="bi bi-wallet2 text-success fs-2"></i>
+                        </span>
+                    </div>
+                    <h1 class="h3 fw-bold text-brand-blue-900">Vamos definir sua meta! 🚀</h1>
+                    <p class="text-muted">Para controlar seus gastos, precisamos saber o seu orçamento mensal.</p>
+                </div>
+
+                <div class="mb-4">
+                    <div class="step-indicator">
+                        <div class="step-progress" style="width: 50%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between step-label">
+                        <span class="active">1. Renda Fixa</span>
+                        <span class="inactive">2. Configuração</span>
+                    </div>
+                </div>
+
+                <div class="card onboarding-card bg-white">
+                    <div class="card-body p-4">
+                        <form method="post" class="needs-validation" novalidate>
+                            {% csrf_token %}
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-brand-blue-900">
+                                    Renda Mensal Fixa <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text input-icon-bg"><i class="bi bi-cash"></i></span>
+                                    <span class="input-group-text bg-white border-end-0 border-start-0 pe-1">R$</span>
+                                    <input type="text" name="renda_fixa" class="form-control border-start-0 ps-1 money-mask fw-bold text-success" 
+                                           placeholder="0,00" required value="{{ form.renda_fixa.value|default:'' }}">
+                                    <div class="invalid-feedback">
+                                        Por favor, informe sua renda mensal.
+                                    </div>
+                                </div>
+                                <div class="form-text small"><i class="bi bi-info-circle me-1"></i>Seu salário líquido ou valor total disponível.</div>
+                            </div>
+
+                            <div class="d-grid mt-5">
+                                <button class="btn btn-brand-green btn-lg fw-bold shadow-sm" type="submit">
+                                    Continuar <i class="bi bi-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <form action="{% url 'account_logout' %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link text-muted btn-sm text-decoration-none opacity-75">
+                            <i class="bi bi-box-arrow-left me-1"></i> Sair e configurar depois
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+<script src="{% static 'js/onboarding.js' %}"></script>
+{% endblock %}
