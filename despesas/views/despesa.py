@@ -85,57 +85,80 @@ def criar_despesa(request):
         
         if form.is_valid() and formset.is_valid():
             try:
-                with transaction.atomic():
-                    dados_base = form.cleaned_data                    
-                    try:
-                        qtd_parcelas = int(dados_base.get('parcelas_selecao') or 1)
-                    except (ValueError, TypeError):
-                        qtd_parcelas = 1                        
-                    valor_total_compra = dados_base.get('valor') 
-                    data_inicial = dados_base.get('data')
-                    total_centavos = int(valor_total_compra * 100)
-                    base_centavos = total_centavos // qtd_parcelas
-                    resto_centavos = total_centavos % qtd_parcelas
-                    
-                    for i in range(qtd_parcelas):
-                        parcela_cents = base_centavos + (1 if i < resto_centavos else 0)
-                        valor_parcela_atual = Decimal(parcela_cents) / 100
-                        desc_parcela = dados_base.get('desconto', 0) if i == 0 else 0
-
-                        nova_despesa = Despesa(
-                            user=request.user,
-                            categoria=dados_base['categoria'],
-                            emitente_nome=dados_base['emitente_nome'],
-                            emitente_cnpj=dados_base['emitente_cnpj'],
-                            descricao=dados_base['descricao'],
-                            forma_pagamento=dados_base['forma_pagamento'],
-                            tipo=dados_base['tipo'],
-                            observacoes=dados_base['observacoes'],
-                            desconto=desc_parcela,                            
-                            valor=valor_parcela_atual,
-                            parcela_atual=i + 1,
-                            total_parcelas=qtd_parcelas,
-                            data=data_inicial + relativedelta(months=i)
-                        )
-                        nova_despesa.save()
-                        itens_para_criar = []
-                        for item_data in formset.cleaned_data:
-                            if item_data and not item_data.get('DELETE') and item_data.get('nome'):                                
-                                v_tot = item_data.get('valor_total') or 0
-                                v_unit = item_data.get('valor_unitario') or 0                                
-                                itens_para_criar.append(ItemDespesa(
-                                    despesa=nova_despesa,
-                                    nome=item_data.get('nome'),
-                                    codigo=item_data.get('codigo'),
-                                    quantidade=item_data.get('quantidade'),
-                                    valor_unitario=v_unit / qtd_parcelas,
-                                    valor_total=v_tot / qtd_parcelas
-                                ))
+                # Importa o signal e a função receiver para desconectar temporariamente
+                from django.db.models.signals import post_save
+                from despesas.signals import disparar_alerta_orcamento_ao_salvar_despesa, _agendar_verificacao
+                
+                # Desconecta o signal para evitar disparar 12 emails síncronos (timeout)
+                post_save.disconnect(disparar_alerta_orcamento_ao_salvar_despesa, sender=Despesa)
+                
+                try:
+                    with transaction.atomic():
+                        dados_base = form.cleaned_data                    
+                        try:
+                            qtd_parcelas = int(dados_base.get('parcelas_selecao') or 1)
+                        except (ValueError, TypeError):
+                            qtd_parcelas = 1                        
+                        valor_total_compra = dados_base.get('valor') 
+                        data_inicial = dados_base.get('data')
+                        total_centavos = int(valor_total_compra * 100)
+                        base_centavos = total_centavos // qtd_parcelas
+                        resto_centavos = total_centavos % qtd_parcelas
                         
-                        if itens_para_criar:
-                            ItemDespesa.objects.bulk_create(itens_para_criar)
-                            nova_despesa.qtd_total_itens = len(itens_para_criar)
+                        primeira_despesa_salva = None
+                        
+                        for i in range(qtd_parcelas):
+                            parcela_cents = base_centavos + (1 if i < resto_centavos else 0)
+                            valor_parcela_atual = Decimal(parcela_cents) / 100
+                            desc_parcela = dados_base.get('desconto', 0) if i == 0 else 0
+
+                            nova_despesa = Despesa(
+                                user=request.user,
+                                categoria=dados_base['categoria'],
+                                emitente_nome=dados_base['emitente_nome'],
+                                emitente_cnpj=dados_base['emitente_cnpj'],
+                                descricao=dados_base['descricao'],
+                                forma_pagamento=dados_base['forma_pagamento'],
+                                tipo=dados_base['tipo'],
+                                observacoes=dados_base['observacoes'],
+                                desconto=desc_parcela,                            
+                                valor=valor_parcela_atual,
+                                parcela_atual=i + 1,
+                                total_parcelas=qtd_parcelas,
+                                data=data_inicial + relativedelta(months=i)
+                            )
                             nova_despesa.save()
+                            
+                            if i == 0:
+                                primeira_despesa_salva = nova_despesa
+                            
+                            itens_para_criar = []
+                            for item_data in formset.cleaned_data:
+                                if item_data and not item_data.get('DELETE') and item_data.get('nome'):                                
+                                    v_tot = item_data.get('valor_total') or 0
+                                    v_unit = item_data.get('valor_unitario') or 0                                
+                                    itens_para_criar.append(ItemDespesa(
+                                        despesa=nova_despesa,
+                                        nome=item_data.get('nome'),
+                                        codigo=item_data.get('codigo'),
+                                        quantidade=item_data.get('quantidade'),
+                                        valor_unitario=v_unit / qtd_parcelas,
+                                        valor_total=v_tot / qtd_parcelas
+                                    ))
+                            
+                            if itens_para_criar:
+                                ItemDespesa.objects.bulk_create(itens_para_criar)
+                                nova_despesa.qtd_total_itens = len(itens_para_criar)
+                                nova_despesa.save()
+                    
+                    # Fora do loop, dispara notificacao APENAS para o primeiro mes (evita timeout)
+                    # Usamos on_commit para respeitar a lógica original de transação
+                    if primeira_despesa_salva:
+                         transaction.on_commit(lambda: _agendar_verificacao(primeira_despesa_salva.user, primeira_despesa_salva.data))
+
+                finally:
+                    # Reconecta o signal SEMPRE, mesmo se der erro
+                    post_save.connect(disparar_alerta_orcamento_ao_salvar_despesa, sender=Despesa)
 
                 msg = f"Despesa salva em {qtd_parcelas}x com sucesso!"
                 messages.success(request, msg)
