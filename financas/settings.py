@@ -65,12 +65,39 @@ DATABASES = {
     )
 }
 
-CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+if DEBUG:
+    # Em desenvolvimento local, usa sistema de arquivos para evitar dependencias extras (como redis ou sqlalchemy)
+    import os
+    BASE_CELERY_PATH = os.path.join(BASE_DIR, 'celery_results')
+    if not os.path.exists(BASE_CELERY_PATH):
+        os.makedirs(BASE_CELERY_PATH, exist_ok=True)
+        
+    CELERY_BROKER_URL = 'memory://'
+    CELERY_RESULT_BACKEND = f'file:///{BASE_CELERY_PATH}'
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+else:
+    CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
+    CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = "America/Sao_Paulo"
+
+# Redis SSL Configuration (Fix for Upstash/Render)
+if CELERY_BROKER_URL.startswith('rediss://'):
+    import ssl
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    
+    CELERY_BROKER_USE_SSL = {
+        'ssl_cert_reqs': ssl.CERT_NONE
+    }
+    CELERY_REDIS_BACKEND_USE_SSL = {
+        'ssl_cert_reqs': ssl.CERT_NONE
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

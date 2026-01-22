@@ -6,6 +6,18 @@
   --brand-blue-50: #f3f9ff;
   --brand-green: #3dc944;
   --brand-green-700: #3a8d41;
+
+  /* Global Colors */
+  --bg-page: #f8fafc;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 .bg-brand-blue {
@@ -42,7 +54,7 @@
 }
 
 .hero-blue {
-  background: linear-gradient(180deg, var(--brand-blue-100) 0%, #ffffff 100%);
+  background: linear-gradient(180deg, var(--brand-blue-100) 0%, var(--bg-page) 100%);
 }
 
 .feature-card:hover {
@@ -55,28 +67,70 @@
   box-shadow: 0 4px 14px rgba(0, 0, 0, .06);
 }
 
+/* KPI Cards - Shared Component */
 .kpi-card {
-  background: #ffffffc9;
-  backdrop-filter: blur(2px);
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06);
+}
+
+.kpi-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+.kpi-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.kpi-subtext {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.kpi-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* KPI Themes */
+.theme-income .kpi-icon-wrapper { background-color: #dcfce7; color: #166534; }
+.theme-income .kpi-value { color: #15803d; }
+
+.theme-expense .kpi-icon-wrapper { background-color: #fee2e2; color: #991b1b; }
+.theme-expense .kpi-value { color: #b91c1c; }
+
+.theme-balance .kpi-icon-wrapper { background-color: #dbeafe; color: #1e40af; }
+.theme-balance .kpi-value { color: #1d4ed8; }
+
+.theme-future .kpi-icon-wrapper { background-color: #f1f5f9; color: #475569; }
+
 
 .stat {
   border: 1px solid #eef2f7;
   background: #fff;
-}
-
-.stat-income {
-  background: #ecfff4;
-}
-
-.stat-expense {
-  background: #ffecec;
-  color: #d13a3a;
-}
-
-.stat-available {
-  background: #edfff7;
-  color: var(--brand-green-700);
 }
 
 .navbar .nav-link {
@@ -214,5 +268,3 @@ footer a:hover {
   box-shadow: none;
   border-color: rgba(0,0,0,.125);
 }
-
-

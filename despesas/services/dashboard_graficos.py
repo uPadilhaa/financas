@@ -188,8 +188,9 @@ def montar_grafico_pizza_categorias(df_despesas_mes) -> str:
 
     serie = df_despesas_mes.groupby("categoria__nome")["valor"].sum().sort_values(ascending=False)    
     cores = [
-        "#6366f1", "#8b5cf6", "#ec4899", "#f43f5e", 
-        "#f59e0b", "#10b981", "#06b6d4", "#3b82f6"
+        "#10b981", "#3b82f6", "#f59e0b", "#f43f5e", "#8b5cf6", 
+        "#06b6d4", "#84cc16", "#d946ef", "#64748b", "#f97316", 
+        "#14b8a6", "#ec4899", "#6366f1", "#eab308", "#a855f7"
     ]
 
     figura.add_trace(go.Pie(
