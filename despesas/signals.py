@@ -1,36 +1,35 @@
-# Arquivo: despesas/middleware.py
-from django.shortcuts import redirect
-from django.urls import reverse
-from despesas.models import Usuario
+from django.db.models.signals import post_save, post_delete, pre_save
+from django.dispatch import receiver
+from django.db import transaction
+from despesas.models import Despesa, Usuario
+from despesas.tasks import task_verificar_alertas_orcamento 
 
-class OnboardingMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
+@receiver(pre_save, sender=Despesa)
+def capturar_data_antiga_antes_de_salvar(sender, instance: Despesa, **kwargs):
+    if instance.pk:
+        try:
+            despesa_banco = Despesa.objects.get(pk=instance.pk)
+            instance._data_antiga = despesa_banco.data
+        except Despesa.DoesNotExist:
+            pass
 
-    def __call__(self, request):
-        urls_permitidas = [
-            reverse('account_login'),
-            reverse('account_logout'),
-            reverse('account_signup'),
-            reverse('onboarding_renda'),
-            reverse('onboarding_notificacoes'),
-            '/admin/',
-            '/accounts/', 
-        ]
+@receiver(post_save, sender=Despesa)
+def disparar_alerta_orcamento_ao_salvar_despesa(sender, instance: Despesa, **kwargs):
+    if not instance.user:
+        return
+    transaction.on_commit(lambda: _agendar_verificacao(instance.user, instance.data))
+    if hasattr(instance, '_data_antiga'):
+        data_velha = instance._data_antiga
+        nova_data = instance.data
+        if data_velha.month != nova_data.month or data_velha.year != nova_data.year:
+            transaction.on_commit(lambda: _agendar_verificacao(instance.user, data_velha))
 
-        if request.user.is_authenticated:
-            path = request.path_info            
-            if any(path.startswith(u) for u in urls_permitidas):
-                return self.get_response(request)
+@receiver(post_delete, sender=Despesa)
+def disparar_alerta_orcamento_ao_excluir_despesa(sender, instance: Despesa, **kwargs):
+    if not instance.user:
+        return
+    transaction.on_commit(lambda: _agendar_verificacao(instance.user, instance.data))
 
-            try:
-                perfil = Usuario.objects.get(user=request.user)                
-                if not perfil.renda_fixa or perfil.renda_fixa == 0:
-                    return redirect('onboarding_renda')
-
-            except Usuario.DoesNotExist:
-                Usuario.objects.create(user=request.user)
-                return redirect('onboarding_renda')
-
-        response = self.get_response(request)
-        return response
+def _agendar_verificacao(user, data_ref):
+    perfil, _ = Usuario.objects.get_or_create(user=user)
+    task_verificar_alertas_orcamento.delay(perfil.id, data_ref)
