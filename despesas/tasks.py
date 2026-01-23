@@ -8,18 +8,27 @@ logger = logging.getLogger(__name__)
 @shared_task(bind=True, max_retries=3)
 def task_verificar_alertas_orcamento(self, perfil_id, data_referencia=None):
     """
-    Task assíncrona para verificar e enviar alertas.
-    Se falhar (ex: erro de rede), tenta de novo automaticamente (max_retries=3).
+    Task executada em Thread para evitar bloquear o Worker do Gunicorn no Render (Timeout).
     """
-    try:
+    import threading
+    from django.db import connections
+    
+    def _execucao_background():
         try:
-            perfil = Usuario.objects.get(id=perfil_id)
-        except Usuario.DoesNotExist:
-            logger.warning(f"Task abortada: Perfil ID {perfil_id} não encontrado.")
-            return
+            # Garante que a thread tenha conexão limpa com o banco
+            connections.close_all()
+            
+            try:
+                perfil = Usuario.objects.get(id=perfil_id)
+                verificar_e_disparar_alertas_orcamento(perfil, data_referencia)
+            except Usuario.DoesNotExist:
+                logger.warning(f"Task abortada: Perfil ID {perfil_id} não encontrado.")
+            except Exception as e:
+                logger.error(f"Erro na execução background do alerta: {e}")
+                
+        finally:
+            connections.close_all()
 
-        verificar_e_disparar_alertas_orcamento(perfil, data_referencia)
-
-    except Exception as exc:
-        logger.error(f"Erro na task de alerta para perfil {perfil_id}: {exc}")
-        raise self.retry(exc=exc, countdown=60)
+    # Inicia a thread e deixa rodando (Fire-and-forget)
+    thread = threading.Thread(target=_execucao_background)
+    thread.start()
