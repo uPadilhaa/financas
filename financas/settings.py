@@ -22,7 +22,7 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
-    "anymail",  # Adicionado Anymail
+    "anymail",
 ]
 
 MIDDLEWARE = [
@@ -125,8 +125,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Email Configuration (SMTP vs Anymail)
 BREVO_API_KEY = config('BREVO_API_KEY', default=None)
+
 
 if BREVO_API_KEY:
     EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
@@ -180,7 +180,6 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Logging Configuration for Render/Production
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -207,7 +206,7 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
-        'despesas': {  # Logger do App
+        'despesas': {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': True,

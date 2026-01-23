@@ -107,70 +107,61 @@ def criar_despesa(request):
                         
                         primeira_despesa_salva = None
                         
-                    datas_para_verificar = set()
-                    
-                    for i in range(qtd_parcelas):
-                        parcela_cents = base_centavos + (1 if i < resto_centavos else 0)
-                        valor_parcela_atual = Decimal(parcela_cents) / 100
-                        desc_parcela = dados_base.get('desconto', 0) if i == 0 else 0
+                        datas_para_verificar = set()
                         
-                        data_parcela = data_inicial + relativedelta(months=i)
-                        
-                        nova_despesa = Despesa(
-                            user=request.user,
-                            categoria=dados_base['categoria'],
-                            emitente_nome=dados_base['emitente_nome'],
-                            emitente_cnpj=dados_base['emitente_cnpj'],
-                            descricao=dados_base['descricao'],
-                            forma_pagamento=dados_base['forma_pagamento'],
-                            tipo=dados_base['tipo'],
-                            observacoes=dados_base['observacoes'],
-                            desconto=desc_parcela,                            
-                            valor=valor_parcela_atual,
-                            parcela_atual=i + 1,
-                            total_parcelas=qtd_parcelas,
-                            data=data_parcela
-                        )
-                        nova_despesa.save()
-                        
-                        # Coleta a data (mes/ano) desta parcela para verificar orçamento depois
-                        datas_para_verificar.add((data_parcela.year, data_parcela.month))
-
-                        if i == 0:
-                            primeira_despesa_salva = nova_despesa
-                        
-                        itens_para_criar = []
-                        for item_data in formset.cleaned_data:
-                            if item_data and not item_data.get('DELETE') and item_data.get('nome'):                                
-                                v_tot = item_data.get('valor_total') or 0
-                                v_unit = item_data.get('valor_unitario') or 0                                
-                                itens_para_criar.append(ItemDespesa(
-                                    despesa=nova_despesa,
-                                    nome=item_data.get('nome'),
-                                    codigo=item_data.get('codigo'),
-                                    quantidade=item_data.get('quantidade'),
-                                    valor_unitario=v_unit / qtd_parcelas,
-                                    valor_total=v_tot / qtd_parcelas
-                                ))
-                        
-                        if itens_para_criar:
-                            ItemDespesa.objects.bulk_create(itens_para_criar)
-                            nova_despesa.qtd_total_itens = len(itens_para_criar)
+                        for i in range(qtd_parcelas):
+                            parcela_cents = base_centavos + (1 if i < resto_centavos else 0)
+                            valor_parcela_atual = Decimal(parcela_cents) / 100
+                            desc_parcela = dados_base.get('desconto', 0) if i == 0 else 0
+                            
+                            data_parcela = data_inicial + relativedelta(months=i)
+                            
+                            nova_despesa = Despesa(
+                                user=request.user,
+                                categoria=dados_base['categoria'],
+                                emitente_nome=dados_base['emitente_nome'],
+                                emitente_cnpj=dados_base['emitente_cnpj'],
+                                descricao=dados_base['descricao'],
+                                forma_pagamento=dados_base['forma_pagamento'],
+                                tipo=dados_base['tipo'],
+                                observacoes=dados_base['observacoes'],
+                                desconto=desc_parcela,                            
+                                valor=valor_parcela_atual,
+                                parcela_atual=i + 1,
+                                total_parcelas=qtd_parcelas,
+                                data=data_parcela
+                            )
                             nova_despesa.save()
-                
-                # Fora do loop, dispara notificacao para TODOS os meses afetados
-                # Usamos on_commit para respeitar a transação e evitar bloquear a request
-                if primeira_despesa_salva:
-                    from datetime import date
-                    for ano_v, mes_v in datas_para_verificar:
-                        # Cria uma data base (dia 1) para passar para a task
-                        data_ref = date(ano_v, mes_v, 1) 
-                        # Python evalua o valor de data_ref no loop lambda com default arg ou functools,
-                        # mas aqui vamos usar um helper interno ou partial para garantir o valor correto
-                        # Abordagem segura: criar função local ou passar args diretos se a task suportar.
-                        # Melhor: chamar _agendar_verificacao para cada data.
-                        
-                        transaction.on_commit(lambda d=data_ref: _agendar_verificacao(request.user, d))
+                            
+                            datas_para_verificar.add((data_parcela.year, data_parcela.month))
+
+                            if i == 0:
+                                primeira_despesa_salva = nova_despesa
+                            
+                            itens_para_criar = []
+                            for item_data in formset.cleaned_data:
+                                if item_data and not item_data.get('DELETE') and item_data.get('nome'):                                
+                                    v_tot = item_data.get('valor_total') or 0
+                                    v_unit = item_data.get('valor_unitario') or 0                                
+                                    itens_para_criar.append(ItemDespesa(
+                                        despesa=nova_despesa,
+                                        nome=item_data.get('nome'),
+                                        codigo=item_data.get('codigo'),
+                                        quantidade=item_data.get('quantidade'),
+                                        valor_unitario=v_unit / qtd_parcelas,
+                                        valor_total=v_tot / qtd_parcelas
+                                    ))
+                            
+                            if itens_para_criar:
+                                ItemDespesa.objects.bulk_create(itens_para_criar)
+                                nova_despesa.qtd_total_itens = len(itens_para_criar)
+                                nova_despesa.save()
+                    
+                        if primeira_despesa_salva:
+                            from datetime import date
+                            for ano_v, mes_v in datas_para_verificar:
+                                data_ref = date(ano_v, mes_v, 1) 
+                                transaction.on_commit(lambda d=data_ref: _agendar_verificacao(request.user, d))
 
                 finally:
                     # Reconecta o signal SEMPRE, mesmo se der erro
