@@ -47,3 +47,20 @@ class ConfiguracaoNotificacaoForm(forms.ModelForm):
             'alertas_email_ativos': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'limiares_alerta': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ex: 80, 90, 100'}),
         }
+
+
+class DeleteAccountForm(forms.Form):
+    confirmacao = forms.CharField(
+        label="Confirmação",
+        required=True,
+        widget=forms.TextInput(attrs={
+            "class": "form-control border-danger text-danger fw-bold", 
+            "placeholder": "Digite DELETAR"
+        })
+    )
+
+    def clean_confirmacao(self):
+        confirmacao = self.cleaned_data.get("confirmacao")
+        if confirmacao != "DELETAR":
+            raise forms.ValidationError("A confirmação está incorreta. Digite exatamente DELETAR.")
+        return confirmacao

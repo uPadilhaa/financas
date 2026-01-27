@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-5">
+                <div class="card border-0 shadow-sm border-danger border-start border-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="fw-bold mb-0 text-danger">Excluir Conta</h4>
+                            <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary">Cancelar</a>
+                        </div>
+
+                        <div class="alert alert-danger border-0 bg-danger-subtle text-danger mb-4">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            <strong>Atenção!</strong> Esta ação é irreversível. Todos os seus dados, despesas e
+                            configurações serão apagados permanentemente.
+                        </div>
+
+                        <p class="text-muted mb-4">
+                            Para confirmar a exclusão da sua conta, por favor digite <strong>DELETAR</strong> no campo
+                            abaixo.
+                        </p>
+
+                        <form method="post" novalidate>
+                            {% csrf_token %}
+
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold text-danger">Confirmação</label>
+                                {{ form.confirmacao }}
+                                {% if form.confirmacao.errors %}
+                                <div class="invalid-feedback d-block">{{ form.confirmacao.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="d-grid">
+                                <button class="btn btn-danger py-2 fw-bold shadow-sm" type="submit">
+                                    <i class="bi bi-trash3-fill me-1"></i> Excluir Minha Conta
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

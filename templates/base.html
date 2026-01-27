@@ -7,27 +7,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>BpC$ — Gerenciador de Despesas</title>
   <meta name="description" content="Controle seus gastos, metas e alertas de forma simples e inteligente.">
-  
+
   <link rel="icon" type="image/png" href="{% static 'img/logo.png' %}">
-  
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link href="{% static 'css/custom.css' %}" rel="stylesheet">
   <link href="{% static 'css/loader.css' %}" rel="stylesheet">
-  <link href="{% static 'css/navbar.css' %}" rel="stylesheet"> 
+  <link href="{% static 'css/navbar.css' %}" rel="stylesheet">
 </head>
 
 <body class="d-flex flex-column min-vh-100 bg-light">
-  
+
   <header class="border-0 bg-brand-blue shadow-sm sticky-top">
     <nav class="navbar navbar-expand-lg navbar-dark container-fluid px-lg-5 py-2">
 
       <a class="navbar-brand d-flex align-items-center gap-2 nav-delay me-4" href="/">
-        <img src="{% static 'img/logo.png' %}" alt="BpC$" 
-             height="42" 
-             class="bg-white rounded p-1 shadow-sm" 
-             style="width: auto; object-fit: contain;">
-        
+        <img src="{% static 'img/logo.png' %}" alt="BpC$" height="42" class="bg-white rounded p-1 shadow-sm"
+          style="width: auto; object-fit: contain;">
+
         <span class="fw-bold tracking-tight fs-5">BpC$</span>
       </a>
 
@@ -61,65 +59,76 @@
         </ul>
 
         <div class="d-flex align-items-center ms-auto">
-            <div class="dropdown me-3">
-                <button class="btn btn-sm btn-light fw-bold text-primary rounded-pill px-3 dropdown-toggle no-arrow" type="button" data-bs-toggle="dropdown">
-                    <i class="bi bi-plus-lg me-1"></i> Novo
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-2">
-                    <li><a class="dropdown-item py-2" href="{% url 'despesa_criar' %}"><i class="bi bi-cart-plus me-2 text-danger"></i>Nova Despesa</a></li>
-                    <li><a class="dropdown-item py-2" href="{% url 'receita_criar' %}"><i class="bi bi-cash-coin me-2 text-success"></i>Nova Receita</a></li>
-                </ul>
+          <div class="dropdown me-3">
+            <button class="btn btn-sm btn-light fw-bold text-primary rounded-pill px-3 dropdown-toggle no-arrow"
+              type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-plus-lg me-1"></i> Novo
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-2">
+              <li><a class="dropdown-item py-2" href="{% url 'despesa_criar' %}"><i
+                    class="bi bi-cart-plus me-2 text-danger"></i>Nova Despesa</a></li>
+              <li><a class="dropdown-item py-2" href="{% url 'receita_criar' %}"><i
+                    class="bi bi-cash-coin me-2 text-success"></i>Nova Receita</a></li>
+            </ul>
+          </div>
+
+          <div class="dropdown">
+            <div class="user-menu-btn" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              {% with accounts=request.user.socialaccount_set.all %}
+              {% if accounts and accounts.0.extra_data.picture %}
+              <img src="{{ accounts.0.extra_data.picture }}" alt="User" class="rounded-circle" width="36" height="36">
+              {% else %}
+              <div class="bg-white text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                style="width: 36px; height: 36px;">
+                {{ request.user.first_name|first|default:request.user.username|first|upper }}
+              </div>
+              {% endif %}
+              {% endwith %}
             </div>
 
-            <div class="dropdown">
-                <div class="user-menu-btn" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    {% with accounts=request.user.socialaccount_set.all %}
-                        {% if accounts and accounts.0.extra_data.picture %}
-                            <img src="{{ accounts.0.extra_data.picture }}" alt="User" class="rounded-circle" width="36" height="36">
-                        {% else %}
-                            <div class="bg-white text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px;">
-                                {{ request.user.first_name|first|default:request.user.username|first|upper }}
-                            </div>
-                        {% endif %}
-                    {% endwith %}
-                </div>
+            <ul class="dropdown-menu dropdown-menu-end dropdown-user">
+              <li class="user-header">
+                <div class="fw-bold text-dark">{{ request.user.first_name|default:request.user.username }}</div>
+                <div class="small text-muted">{{ request.user.email }}</div>
+              </li>
 
-                <ul class="dropdown-menu dropdown-menu-end dropdown-user">
-                    <li class="user-header">
-                        <div class="fw-bold text-dark">{{ request.user.first_name|default:request.user.username }}</div>
-                        <div class="small text-muted">{{ request.user.email }}</div>
-                    </li>
-                    
-                    <li>
-                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalConfiguracoes" 
-                           data-url="{% url 'configurar_notificacoes' %}?modal=true">
-                            <i class="bi bi-bell"></i> Configurar Notificações
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item" href="{% url 'configurar_financas' %}">
-                            <i class="bi bi-sliders"></i> Ajustar Renda Fixa
-                        </a>
-                    </li>
-                    
-                    <li><hr class="dropdown-divider my-2"></li>
-                    
-                    <li>
-                        <form action="{% url 'account_logout' %}" method="post" class="d-inline w-100">
-                            {% csrf_token %}
-                            <button type="submit" class="dropdown-item text-danger">
-                                <i class="bi bi-box-arrow-right"></i> Sair do Sistema
-                            </button>
-                        </form>
-                    </li>
-                </ul>
-            </div>
+              <li>
+                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#modalConfiguracoes"
+                  data-url="{% url 'configurar_notificacoes' %}?modal=true">
+                  <i class="bi bi-bell"></i> Configurar Notificações
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{% url 'configurar_financas' %}">
+                  <i class="bi bi-sliders"></i> Ajustar Renda Fixa
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item text-danger" href="{% url 'deletar_conta' %}">
+                  <i class="bi bi-trash3"></i> Excluir Conta
+                </a>
+              </li>
+
+              <li>
+                <hr class="dropdown-divider my-2">
+              </li>
+
+              <li>
+                <form action="{% url 'account_logout' %}" method="post" class="d-inline w-100">
+                  {% csrf_token %}
+                  <button type="submit" class="dropdown-item text-danger">
+                    <i class="bi bi-box-arrow-right"></i> Sair do Sistema
+                  </button>
+                </form>
+              </li>
+            </ul>
+          </div>
         </div>
         {% else %}
         <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-                <a class="btn btn-light fw-bold px-4 rounded-pill" href="/login/">Entrar / Cadastrar</a>
-            </li>
+          <li class="nav-item">
+            <a class="btn btn-light fw-bold px-4 rounded-pill" href="/login/">Entrar / Cadastrar</a>
+          </li>
         </ul>
         {% endif %}
       </div>
@@ -133,17 +142,17 @@
   {% if user.is_authenticated %}
   <div class="modal fade" id="modalConfiguracoes" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-brand-blue-900 ps-2">Configurar Notificações</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body pt-2" id="modalConfiguracoesBody">
-                <div class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status"></div>
-                </div>
-            </div>
+      <div class="modal-content border-0 shadow rounded-4">
+        <div class="modal-header border-bottom-0 pb-0">
+          <h5 class="modal-title fw-bold text-brand-blue-900 ps-2">Configurar Notificações</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
+        <div class="modal-body pt-2" id="modalConfiguracoesBody">
+          <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   {% endif %}
@@ -153,6 +162,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script defer src="{% static 'js/loader.js' %}"></script>
-  <script defer src="{% static 'js/navbar.js' %}"></script> 
+  <script defer src="{% static 'js/navbar.js' %}"></script>
 </body>
+
 </html>

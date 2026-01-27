@@ -8,6 +8,7 @@ urlpatterns = [
     path("dashboard/", v.dashboard, name="dashboard"),
     path('notificacoes/', v.configurar_notificacoes, name='configurar_notificacoes'), 
     path("configuracao/", v.configurar_financas, name="configurar_financas"), 
+    path("conta/deletar/", v.deletar_conta, name="deletar_conta"),
     path("accounts/", include("allauth.urls")),   
     path("despesas/", v.listar_despesa, name="listar_despesa"),
     path("despesas/criar/", v.criar_despesa, name="despesa_criar"),

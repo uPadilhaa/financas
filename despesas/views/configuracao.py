@@ -36,3 +36,22 @@ def configurar_notificacoes(request):
         return render(request, 'configuracao_notificacoes_modal.html', {'form': form})
     
     return render(request, 'configuracao_notificacoes.html', {'form': form})
+
+
+@login_required
+def deletar_conta(request):
+    if request.method == "POST":
+        from despesas.forms.configuracao import DeleteAccountForm
+        from django.contrib.auth import logout
+        
+        form = DeleteAccountForm(request.POST)
+        if form.is_valid():
+            user = request.user
+            user.delete()
+            messages.success(request, "Sua conta foi excluída com sucesso.")
+            return redirect("home") 
+    else:
+        from despesas.forms.configuracao import DeleteAccountForm
+        form = DeleteAccountForm()
+
+    return render(request, "deletar_conta.html", {"form": form})
