@@ -8,9 +8,7 @@ from io import BytesIO
 from urllib.parse import urlparse
 import socket
 import ipaddress
-import numpy as np
-import cv2
-import pdfplumber
+
 
 from despesas.models import Categoria
 from despesas.enums.forma_pagamento_enum import FormaPagamento
@@ -108,6 +106,8 @@ class NFeService:
                 logger.warning("QReader indisponível. Abortando decodificação.")
                 return None
 
+            import numpy as np
+            import cv2
             nparr = np.frombuffer(img_bytes, np.uint8)
             imagem = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             if imagem is None: return None
@@ -292,6 +292,7 @@ class NFeService:
         itens: list[dict] = []
 
         try:
+            import pdfplumber
             with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
                 for page in pdf.pages:
                     tables = page.extract_tables()
@@ -332,6 +333,7 @@ class NFeService:
             
             if not itens:
                 full_text = ""
+                import pdfplumber
                 with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
                     for page in pdf.pages: full_text += "\n" + (page.extract_text() or "")
                 
@@ -461,6 +463,7 @@ class NFeService:
         uploaded_file.seek(0)
         full_text = ""
         try:
+            import pdfplumber
             with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
                 for page in pdf.pages: full_text += "\n" + (page.extract_text() or "")
         except: pass    
