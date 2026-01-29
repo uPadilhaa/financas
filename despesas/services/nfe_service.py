@@ -27,13 +27,27 @@ class NFeService:
     def qreader(self):
         """
         Retorna a instância Singleton do QReader.
+
         Carrega o modelo na memória apenas na primeira vez que for chamado.
+        Tenta usar o modelo 'nano' para economizar memória RAM (CRÍTICO para Render Free Tier).
+
+        Returns:
+            QReader | None: A instância do leitor de QR Code ou None em caso de erro crítico.
         """
         global _INSTANCIA_QREADER
         if _INSTANCIA_QREADER is None:
-            logger.info("Carregando modelo QReader na memória...")
-            from qreader import QReader
-            _INSTANCIA_QREADER = QReader(model_size='s') 
+            try:
+                logger.info("Iniciando carregamento do modelo QReader (Nano) na memória...")
+                from qreader import QReader
+                _INSTANCIA_QREADER = QReader(model_size='n') 
+                logger.info("Modelo QReader (Nano) carregado com sucesso.")
+            except ImportError:
+                 logger.error("Biblioteca QReader não instalada.")
+                 return None
+            except Exception as e:
+                logger.critical(f"Falha crítica ao carregar QReader (possível OOM): {e}")
+                return None
+
         return _INSTANCIA_QREADER
 
     def validar_url(self, url: str) -> bool:
@@ -90,6 +104,10 @@ class NFeService:
             str | None: A URL ou texto decodificado do QR Code, ou None se falhar.
         """
         try:
+            if self.qreader is None:
+                logger.warning("QReader indisponível. Abortando decodificação.")
+                return None
+
             nparr = np.frombuffer(img_bytes, np.uint8)
             imagem = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             if imagem is None: return None
