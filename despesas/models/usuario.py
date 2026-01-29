@@ -16,7 +16,14 @@ class Usuario(models.Model):
         return self.user.get_full_name() or self.user.email
 
     def get_limiares_list(self):
-        """Retorna uma lista de inteiros ex: [80, 90, 100]"""
+        """
+        Retorna a lista de porcentagens configuradas para alerta de orçamento.
+
+        Processa a string '80, 90, 100' armazenada no banco.
+
+        Returns:
+            list[int]: Lista de inteiros ordenados (ex: [80, 90, 100]).
+        """
         try:
             return sorted([int(x.strip()) for x in self.limiares_alerta.split(",") if x.strip().isdigit()])
         except:

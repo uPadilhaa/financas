@@ -31,7 +31,7 @@ class Categoria(models.Model):
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def criar_categorias_padrao(sender, instance, created, **kwargs):
     if created:
-        padroes = ["Mercado", "Farmácia", "Transporte", "Alimentação", "Vestuário", "Casa", "Outros"]
+        padroes = ["Mercado", "Farmácia", "Transporte", "Alimentação", "Vestuário", "Casa", "Outros", "Eletrônicos", "Saúde", "Lazer", "Educação", "Pet Shop", "Serviços"]
         objetos = []
         for nome in padroes:
             c = Categoria(user=instance, nome=nome)

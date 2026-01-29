@@ -7,6 +7,15 @@ from django.utils import timezone
 from despesas.models import Despesa, Receita, Usuario, Categoria
 
 def to_float(valor) -> float:
+    """
+    Converte um valor arbitrário para float de forma segura.
+
+    Args:
+        valor (Any): O valor a ser convertido.
+
+    Returns:
+        float: O valor convertido ou 0.0 em caso de erro.
+    """
     try:
         return float(valor)
     except (TypeError, ValueError):
@@ -14,9 +23,18 @@ def to_float(valor) -> float:
 
 def carregar_bases_ultimo_ano(usuario) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
-    Carrega histórico maior (2 anos) para garantir que encontremos 
-    pelo menos 6 meses ativos mesmo se forem espaçados.
+    Carrega o histórico financeiro (Despesas e Receitas) dos últimos 2 anos.
+
+    O período estendido de 2 anos é utilizado para garantir histórico suficiente
+    para a análise de tendências, mesmo com meses sem movimentação.
+
+    Args:
+        usuario (User): O usuário logado.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: DataFrames de Despesas e Receitas normalizados.
     """
+
     hoje = timezone.localdate()
     data_inicio = hoje - timedelta(days=730)
     
@@ -51,9 +69,17 @@ def carregar_bases_ultimo_ano(usuario) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 def obter_meses_ativos(df_despesas: pd.DataFrame, data_ref, limite=6) -> List[pd.Timestamp]:
     """
-    Retorna uma lista com os 'limite' meses mais recentes que possuem despesas,
-    até a data de referência (inclusive).
+    Identifica os meses mais recentes que possuem movimentação financeira.
+
+    Args:
+        df_despesas (pd.DataFrame): DataFrame contendo as despesas.
+        data_ref (date): A data de referência (mês atual visualizado).
+        limite (int): Número máximo de meses a retornar (padrão 6).
+
+    Returns:
+        List[pd.Timestamp]: Lista de timestamps dos meses ativos encontrados.
     """
+
     if df_despesas.empty:
         return []
     
@@ -70,6 +96,22 @@ def obter_meses_ativos(df_despesas: pd.DataFrame, data_ref, limite=6) -> List[pd
     return meses_finais
 
 def calcular_kpis_mensais(hoje, data_referencia, df_despesas, df_receitas, perfil) -> Dict[str, Any]:
+    """
+    Calcula os indicadores chave de performance (KPIs) financeiros do mês.
+
+    Calcula totais de entradas, saídas, saldo, percentual de orçamento comprometido
+    e tendências de gastos em relação ao mês anterior.
+
+    Args:
+        hoje (date): Data atual.
+        data_referencia (date): Mês cujos KPIs serão calculados.
+        df_despesas (pd.DataFrame): Base de despesas.
+        df_receitas (pd.DataFrame): Base de receitas.
+        perfil (Usuario): Perfil do usuário contendo renda fixa e configurações.
+
+    Returns:
+        Dict[str, Any]: Dicionário com todos os KPIs calculados.
+    """
     mes_ref = data_referencia.month
     ano_ref = data_referencia.year
 
@@ -137,10 +179,31 @@ def calcular_kpis_mensais(hoje, data_referencia, df_despesas, df_receitas, perfi
     }
 
 def carregar_categorias_orcamento(usuario) -> Dict[str, float]:
+    """
+    Carrega o mapa de orçamentos definidos por categoria pelo usuário.
+
+    Args:
+        usuario (User): O usuário logado.
+
+    Returns:
+        Dict[str, float]: Dicionário {NomeCategoria: ValorOrcamento}.
+    """
     qs_categorias = Categoria.objects.filter(user=usuario).values("nome", "orcamento_mensal")
     return {c["nome"]: to_float(c["orcamento_mensal"]) for c in qs_categorias}
 
 def obter_dados_dashboard(request) -> Dict[str, Any]:
+    """
+    Orquestrador principal da obtenção de dados para o Dashboard.
+
+    Gerencia o carregamento de bases, definição do escopo temporal (mês atual/anterior)
+    e cálculo de todos os KPIs necessários para a view.
+
+    Args:
+        request (HttpRequest): A requisição HTTP contendo o usuário e parâmetros GET.
+
+    Returns:
+        Dict[str, Any]: Contexto completo pronto para ser renderizado pelo Template ou consumido por gráficos.
+    """
     hoje = timezone.localdate()
     escopo_mes = request.GET.get("scope", "atual")
     primeiro_dia_mes_atual = hoje.replace(day=1)

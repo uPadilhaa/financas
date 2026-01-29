@@ -8,28 +8,46 @@ from io import BytesIO
 from urllib.parse import urlparse
 import socket
 import ipaddress
+import numpy as np
+import cv2
+import pdfplumber
 
 from despesas.models import Categoria
 from despesas.enums.forma_pagamento_enum import FormaPagamento
 
 logger = logging.getLogger(__name__)
 
+_INSTANCIA_QREADER = None
+
 class NFeService:
     def __init__(self):
-        # Lazy load qreader only when needed
-        self._qreader = None
+        pass
 
     @property
     def qreader(self):
-        if self._qreader is None:
-            from qreader import QReader
-            self._qreader = QReader()
-        return self._qreader
-
-    def validate_url(self, url: str) -> bool:
         """
-        Validates if the URL is safe to request (SSRF Protection).
-        Blocks internal IPs and non-HTTP/HTTPS schemes.
+        Retorna a instância Singleton do QReader.
+        Carrega o modelo na memória apenas na primeira vez que for chamado.
+        """
+        global _INSTANCIA_QREADER
+        if _INSTANCIA_QREADER is None:
+            logger.info("Carregando modelo QReader na memória...")
+            from qreader import QReader
+            _INSTANCIA_QREADER = QReader(model_size='s') 
+        return _INSTANCIA_QREADER
+
+    def validar_url(self, url: str) -> bool:
+        """
+        Valida se a URL é segura para requisição e previne ataques SSRF.
+
+        Verifica se o esquema é HTTP/HTTPS e resolve o DNS do hostname para garantir
+        que o IP de destino não pertença a redes privadas, locais ou de loopback.
+
+        Args:
+            url (str): A URL a ser verificada.
+
+        Returns:
+            bool: True se a URL for pública e segura, False caso contrário.
         """
         try:
             parsed = urlparse(url)
@@ -56,26 +74,59 @@ class NFeService:
             logger.error(f"URL Validation error: {e}")
             return False
 
-    def decode_qr_from_bytes(self, img_bytes: bytes) -> str | None:
-        import numpy as np
-        import cv2
+    def transform_qr_pra_bytes(self, img_bytes: bytes) -> str | None:
+        """
+        Decodifica um QR Code contido em uma imagem (bytes).
 
+        Utiliza a biblioteca QReader e OpenCV. Se a decodificação inicial falhar,
+        aplica um filtro de limiar adaptativo (adaptive threshold) para melhorar
+        o contraste e tenta novamente. Aplica redimensionamento preventivo para
+        evitar estouro de memória com imagens de alta resolução.
+
+        Args:
+            img_bytes (bytes): O conteúdo binário da imagem.
+
+        Returns:
+            str | None: A URL ou texto decodificado do QR Code, ou None se falhar.
+        """
         try:
             nparr = np.frombuffer(img_bytes, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            if img is None: return None    
-            decoded = self.qreader.detect_and_decode(image=img)
-            if decoded and decoded[0]: return decoded[0]    
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 11)
-            decoded = self.qreader.detect_and_decode(image=thresh)
-            if decoded and decoded[0]: return decoded[0]    
+            imagem = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if imagem is None: return None
+
+            altura, largura = imagem.shape[:2]
+            largura_maxima = 1500
+            if largura > largura_maxima:
+                escala = largura_maxima / largura
+                nova_largura = int(largura * escala)
+                nova_altura = int(altura * escala)
+                imagem = cv2.resize(imagem, (nova_largura, nova_altura), interpolation=cv2.INTER_AREA)
+
+            decodificado = self.qreader.detect_and_decode(image=imagem)
+            if decodificado and decodificado[0]: return decodificado[0]    
+            
+            cinza = cv2.cvtColor(imagem, cv2.COLOR_BGR2GRAY)
+            separacao = cv2.adaptiveThreshold(cinza, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 11)
+            decodificado = self.qreader.detect_and_decode(image=separacao)
+            if decodificado and decodificado[0]: return decodificado[0]    
             return None
         except Exception as e:
             logger.error(f"Error decoding QR: {e}")
             return None
 
-    def clean_float(self, s):
+    def normalizar_float(self, s):
+        """
+        Converte uma string monetária brasileira ou americana para float.
+
+        Lida com formatos como '1.234,56' e '1,234.56', removendo símbolos não numéricos
+        e ajustando os separadores decimais.
+
+        Args:
+            s (str | float): O valor a ser convertido.
+
+        Returns:
+            float: O valor numérico convertido, ou 0.0 se a conversão falhar.
+        """
         if not s: return 0.0
         s = str(s).strip()
         s = re.sub(r'[^\d,.-]', '', s)
@@ -91,7 +142,19 @@ class NFeService:
         except ValueError:
             return 0.0
 
-    def clean_description(self, desc: str) -> str:
+    def limpar_descricao(self, desc: str) -> str:
+        """
+        Remove prefixos e sufixos irrelevantes da descrição do produto.
+
+        Limpa termos técnicos como 'PRODUTO', 'CÓDIGO', 'QTD' que muitas vezes
+        poluem a descrição extraída da nota fiscal.
+
+        Args:
+            desc (str): A descrição original do produto.
+
+        Returns:
+            str: A descrição limpa e formatada.
+        """
         garbage = [
             "PRODUTO", "DESCRIÇÃO", "CODIGO", "CÓDIGO", "SERVIÇO", "ICMS", "IPI", 
             "ALIQ", "VALOR", "UNIT", "TOTAL", "BC", "UNID", "QTD", "NCM", "CST", "CFOP"
@@ -103,7 +166,18 @@ class NFeService:
             words.pop()    
         return " ".join(words).strip() or "Item"
 
-    def is_valid_cnpj(self, cnpj: str) -> bool:
+    def validar_cnpj(self, cnpj: str) -> bool:
+        """
+        Valida a veracidade de um número de CNPJ aplicando o algoritmo de dígitos verificadores.
+
+        Remove caracteres não numéricos antes da validação.
+
+        Args:
+            cnpj (str): O CNPJ a ser validado.
+
+        Returns:
+            bool: True se o CNPJ for matematicamente válido, False caso contrário.
+        """
         cnpj = re.sub(r'\D', '', str(cnpj))
         if len(cnpj) != 14 or len(set(cnpj)) == 1:
             return False
@@ -123,17 +197,36 @@ class NFeService:
             return False
         return True
 
-    def predict_category(self, user, emitente_nome: str) -> int | None:
+    def preencher_categoria(self, user, emitente_nome: str) -> int | None:
+        """
+        Prediz a categoria da despesa com base no nome do estabelecimento (emitente).
+
+        Utiliza um dicionário de palavras-chave mapeadas para categorias comuns (ex: 'Zaffari' -> 'Mercado').
+        Busca no banco de dados se a categoria sugerida existe para o usuário.
+
+        Args:
+            user (User): O usuário dono da despesa.
+            emitente_nome (str): O nome do estabelecimento comercial.
+
+        Returns:
+            int | None: O ID da categoria encontrada ou None.
+        """
         if not emitente_nome: return None
         txt = emitente_nome.lower()
         regras = {
-            "Mercado": ["supermercado", "mercado", "zaffari", "carrefour", "big", "nacional", "atacado", "bistek", "center shop", "dia%", "stock center", "comercial zaffari", "maxxi", "kan", "macromix"],
-            "Farmácia": ["farmacia", "drogaria", "panvel", "são joão", "pague menos", "raia", "drogasil", "bifarma", "ultrafarma"],
-            "Transporte": ["posto", "combustivel", "ipiranga", "shell", "petrobras", "uber", "99pop", "abastecimento"],
-            "Alimentação": ["restaurante", "lancheria", "burger", "mcdonalds", "subway", "ifood", "bar", "padaria", "confeitaria", "pizzaria"],
-            "Vestuário": ["lojas renner", "riachuelo", "c&a", "zara", "cea", "marisa", "pompéia", "shein"],
-            "Casa": ["ferragem", "construção", "leroy", "cassol", "telhanorte", "eletrica", "comercial dalacorte"],
-            "Eletrônicos": ["kabum", "pichau", "terabyte", "kalunga", "dell", "samsung", "apple"]
+            "Mercado": ["supermercado", "mercado", "zaffari", "carrefour", "big", "nacional", "atacado", "bistek", "center shop", "dia%", "stock center", "comercial zaffari", "maxxi", "kan", "macromix", "assai", "makro", "atacadao", "extra", "pao de acucar", "mambo", "condor", "angeloni", "fort atacadista", "savegnago", "bahamas", "guanabara", "zona sul", "mundial", "sonda", "festval", "gimba", "tenda", "todo dia"],
+            "Farmácia": ["farmacia", "drogaria", "panvel", "são joão", "pague menos", "raia", "drogasil", "bifarma", "ultrafarma", "extrafarma", "farmacia popular", "pacheco", "drogasmil", "nissei", "farmasil", "paguemenos", "droga raia", "poupa tempo", "venancio"],
+            "Transporte": ["posto", "combustivel", "ipiranga", "shell", "petrobras", "uber", "99pop", "abastecimento", "ale", "br distribuidora", "esso", "texaco", "raizen", "99", "cabify", "estacionamento", "pedagio", "sem parar", "veloe", "conectcar", "pneu", "borracharia", "mecanica"],
+            "Alimentação": ["restaurante", "lancheria", "burger", "mcdonalds", "subway", "ifood", "bar", "padaria", "confeitaria", "pizzaria", "bobs", "burger king", "habib's", "giraffa", "spoleto", "pizza hut", "dominos", "outback", "china in box", "ragazzo", "vivenda", "madero", "giraffas", "rappi", "ze delivery", "lanchonete", "delivery", "sorveteria", "açai", "acai"],
+            "Vestuário": ["lojas renner", "riachuelo", "c&a", "zara", "cea", "marisa", "pompéia", "shein", "hering", "farm", "shoulder", "forum", "polo wear", "nike", "adidas", "centauro", "decathlon", "pernambucanas", "leader", "magazine luiza roupa", "netshoes", "mercado livre moda", "track&field", "reserva"],
+            "Casa": ["ferragem", "construção", "leroy", "cassol", "telhanorte", "eletrica", "comercial dalacorte", "leroy merlin", "dicico", "c&c", "obramax", "constrular", "sodimac", "tok stok", "etna", "camicado", "utilplast", "loja de moveis", "movida"],
+            "Eletrônicos": ["kabum", "pichau", "terabyte", "kalunga", "dell", "samsung", "apple", "magazine luiza", "casas bahia", "ponto frio", "fast shop", "americanas", "extra eletrônicos", "ricardo eletro", "carrefour eletrônicos", "mercado livre", "amazon", "submarino", "shoptime", "multilaser", "positivo", "lenovo", "lg", "motorola", "xiaomi"],
+            "Saúde": ["hospital", "clinica", "laboratorio", "consulta", "medico", "dentista", "odonto", "unimed", "hapvida", "amil", "sulamerica", "bradesco saude", "notredame", "intermedica", "lavoisier", "fleury", "delboni", "hermes pardini", "einstein", "sirio libanes"],
+            "Educação": ["escola", "faculdade", "curso", "universidade", "kumon", "wizard", "ccaa", "fisk", "cultura inglesa", "cel lep", "cursinho", "etec", "senac", "senai", "sesi", "udemy", "hotmart", "eduzz"],
+            "Lazer": ["cinema", "cinemark", "cinepolis", "uci", "kinoplex", "teatro", "show", "ingresso.com", "eventim", "sympla", "parque", "clube", "boliche", "brinquedoteca", "netflix", "spotify", "amazon prime", "disney+", "hbo", "globoplay"],
+            "Pet Shop": ["pet shop", "petz", "cobasi", "petlove", "petco", "agropecuaria", "veterinaria", "clinica veterinaria", "banho e tosa", "petiscos", "racao"],
+            "Serviços": ["salao", "barbearia", "estetica", "academia", "smartfit", "bluefit", "bio ritmo", "bodytech", "lavanderia", "lavagem", "costureira", "assistencia tecnica", "conserto", "reforma"],
+            "Seguros": ["seguro", "porto seguro", "liberty", "azul seguros", "allianz", "itau seguros", "bradesco seguros", "mapfre", "tokio marine", "hdi seguros"]
         }
         sugestao = None
         for categoria_chave, keywords in regras.items():
@@ -147,7 +240,16 @@ class NFeService:
             if cat: return cat.pk
         return None
 
-    def predict_payment_method(self, text: str) -> str | None:
+    def preencher_forma_pagamento(self, text: str) -> str | None:
+        """
+        Infere a forma de pagamento a partir de textos descritivos da nota.
+
+        Args:
+            text (str): Texto contendo a forma de pagamento (ex: 'Cartão de Crédito').
+
+        Returns:
+            str | None: A chave do enum FormaPagamento ou None.
+        """
         t = text.lower()
         if "crédito" in t or "credito" in t: return FormaPagamento.CREDITO
         if "débito" in t or "debito" in t: return FormaPagamento.DEBITO
@@ -155,16 +257,26 @@ class NFeService:
         if "dinheiro" in t: return FormaPagamento.DINHEIRO
         return None
 
-    def extract_items_hybrid(self, pdf_file) -> list[dict]:
-        import pdfplumber
-        
+    def extracao_itens(self, pdf_file) -> list[dict]:
+        """
+        Extrai itens de compra de um arquivo PDF utilizando mineração de texto (pdfplumber).
+
+        Identifica tabelas de produtos, colunas de descrição, quantidade e valor,
+        e tenta normalizar os dados encontrados.
+
+        Args:
+            pdf_file (file): O arquivo PDF aberto.
+
+        Returns:
+            list[dict]: Lista de dicionários contendo os itens extraídos (nome, qtd, valor, etc).
+        """        
         pdf_bytes = pdf_file.read()
         itens: list[dict] = []
 
         try:
             with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
                 for page in pdf.pages:
-                    tables = page.extract_tables()
+                    tables = page.extracao_tabelas()
                     for table in tables:
                         header_idx = -1
                         col_map: dict[str, int] = {}
@@ -188,20 +300,18 @@ class NFeService:
                                     if not row[col_map.get('total', 0)]: continue
                                     desc_raw = row[col_map['desc']] if 'desc' in col_map else "Item"
                                     
-                                    # SANITY CHECK: Ignore rows with descriptions that look like page dumps
                                     if len(str(desc_raw)) > 200: continue
                                     
-                                    desc = self.clean_description(str(desc_raw).replace('\n', ' '))
-                                    total = self.clean_float(row[col_map['total']])
+                                    desc = self.limpar_descricao(str(desc_raw).replace('\n', ' '))
+                                    total = self.normalizar_float(row[col_map['total']])
                                     if total <= 0: continue
-                                    qtd = self.clean_float(row[col_map['qtd']]) if 'qtd' in col_map else 1.0
-                                    unit = self.clean_float(row[col_map['unit']]) if 'unit' in col_map else total
+                                    qtd = self.normalizar_float(row[col_map['qtd']]) if 'qtd' in col_map else 1.0
+                                    unit = self.normalizar_float(row[col_map['unit']]) if 'unit' in col_map else total
                                     if qtd == 0: qtd = 1.0
                                     if unit == 0: unit = total / qtd
                                     itens.append({"nome": desc, "qtd": qtd, "vl_unit": unit, "vl_total": total, "unidade": "UN"})
                                 except Exception: pass
             
-            # Use fallback text regex logic if tables failed or returned nothing
             if not itens:
                 full_text = ""
                 with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
@@ -245,8 +355,7 @@ class NFeService:
                             desc_parts.append(prefix)
                         pending_item = {}
                         if desc_parts:
-                            final_desc = self.clean_description(" ".join(desc_parts))
-                            # SANITY CHECK: If description is suspiciously long, it's likely a parsing error
+                            final_desc = self.limpar_descricao(" ".join(desc_parts))
                             if len(final_desc) < 250:
                                 pending_item["nome"] = final_desc
                         buffer_desc = []
@@ -257,7 +366,7 @@ class NFeService:
                             if re.fullmatch(r"(UN|UNID\.?|PC|PÇ|PÇS|KG|G|UNIDADE)", t.upper()):
                                 numeric_tokens.append(("UNIT_MARK", t))
                                 continue
-                            v = self.clean_float(t)
+                            v = self.normalizar_float(t)
                             if v > 0:
                                 numeric_tokens.append(("NUM", v))
 
@@ -307,7 +416,6 @@ class NFeService:
                         if waiting_values:
                             continue
                         if not re.match(r"^[\d\.,/\s-]+$", line):
-                            # SANITY CHECK: Don't buffer lines that are extremely long
                             if len(line) < 150:
                                 buffer_desc.append(line)
 
@@ -317,11 +425,21 @@ class NFeService:
         return itens
 
     def parse_nfe_danfe_pdf(self, uploaded_file) -> dict:
-        import pdfplumber
-        
+        """
+        Realiza o parsing completo de uma Nota Fiscal Eletrônica em formato PDF (DANFE).
+
+        Combina a extração tabular de itens com a busca via Regex por metadados
+        (Emitente, CNPJ, Datas, Valores Totais) no texto completo do documento.
+
+        Args:
+            uploaded_file (file): O arquivo PDF enviado pelo usuário.
+
+        Returns:
+            dict: Dicionário contendo todos os dados estruturados da nota.
+        """
         pdf_bytes = uploaded_file.read()    
         uploaded_file.seek(0)
-        itens_estruturados = self.extract_items_hybrid(uploaded_file)    
+        itens_estruturados = self.extracao_itens(uploaded_file)    
         uploaded_file.seek(0)
         full_text = ""
         try:
@@ -330,41 +448,32 @@ class NFeService:
         except: pass    
         
         emitente = "Consumidor"
-        # Try finding the receipt stub text "RECEBEMOS DE ... OS PRODUTOS"
-        # We explicitly look for "OS PRODUTOS" or "OS SERVIÇOS" or "CONSTANTES" to stop the capture
         m_emit = re.search(r"RECEBEMOS\s+DE\s+(.*?)\s+(OS\s+PRODUTOS|AS\s+MERCADORIAS|CONSTANTES)", full_text, re.S | re.I)
         if m_emit: 
             candidate = m_emit.group(1).strip().replace("\n", " ")
-            # If candidate is still huge, try taking just the first line or first 5 words
             if len(candidate) > 100:
-                candidate = candidate.split('\n')[0]
-            
-            # Additional cleanup if it captured too much
+                candidate = candidate.split('\n')[0]            
             if len(candidate) < 100:
                 emitente = candidate
         
-        # Fallback: Scrape top lines for known Entity Types (LTDA, S.A.)
         if emitente == "Consumidor":
              for l in full_text.split('\n')[:25]:
-                # Heuristic: Companies often have these suffixes
                 if len(l) > 3 and len(l) < 100 and any(x in l.upper() for x in ["LTDA", "S.A.", "COMERCIO", "KABUM", "WEBSHOP", "EIRELI", "ME", "EPP"]):
-                    # Clean common prefixes like "IDENTIFICAÇÃO DO EMITENTE" or "DANFE"
                     clean_l = re.sub(r"^(IDENTIFICAÇÃO\s+DO\s+EMITENTE|DANFE)\s*", "", l, flags=re.I).strip()
                     if clean_l:
                         emitente = clean_l
                         break
-
         cnpj = None
         digits = re.sub(r'\D', '', full_text)
         keys = re.findall(r'(\d{44})', digits)
         for key in keys:
             sub = key[6:20]
-            if self.is_valid_cnpj(sub):
+            if self.validar_cnpj(sub):
                 cnpj = f"{sub[:2]}.{sub[2:5]}.{sub[5:8]}/{sub[8:12]}-{sub[12:]}"; break
         if not cnpj:
             ms = re.findall(r"(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})", full_text[:3000])
             for m in ms:
-                if self.is_valid_cnpj(m): cnpj = m; break
+                if self.validar_cnpj(m): cnpj = m; break
         
         data_emissao = timezone.localdate()
         m_data = re.search(r"EMISS[ÃA]O.*?\s+(\d{2}/\d{2}/\d{4})", full_text, re.I | re.S)
@@ -376,10 +485,9 @@ class NFeService:
         m_val = re.search(r"VALOR\s+TOTAL\s+DA\s+NOTA(.*)", full_text, re.I | re.S)
         if m_val:
             nums = re.findall(r"([\d\.]+,\d{2})", m_val.group(1))
-            if nums: valor_total_nota = self.clean_float(nums[-1])
+            if nums: valor_total_nota = self.normalizar_float(nums[-1])
         elif itens_estruturados:
             valor_total_nota = sum(i['vl_total'] for i in itens_estruturados)
-
         return {
             "emitente": emitente,
             "cnpj": cnpj,
@@ -392,7 +500,19 @@ class NFeService:
         }
 
     def scrape_nfe_url(self, url: str) -> dict:
-        if not self.validate_url(url):
+        """
+        Realiza Web Scraping da página da Nota Fiscal (SEFAZ).
+
+        Acessa a URL, valida a segurança e utiliza BeautifulSoup para extrair
+        dados do emitente, totais e a lista de itens da tabela HTML.
+
+        Args:
+            url (str): A URL do QRCode da nota fiscal.
+
+        Returns:
+            dict: Dicionário com os dados extraídos da página.
+        """
+        if not self.validar_url(url):
              logger.warning(f"Invalid URL rejected: {url}")
              return {}
 
@@ -412,7 +532,7 @@ class NFeService:
         if div_topo: emitente = div_topo.get_text(strip=True)    
         texto = soup.get_text(" ", strip=True)    
         m_cnpj = re.search(r"CNPJ[:\s]*(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})", texto)
-        if m_cnpj and self.is_valid_cnpj(m_cnpj.group(1)):
+        if m_cnpj and self.validar_cnpj(m_cnpj.group(1)):
             cnpj = m_cnpj.group(1)
 
         data_emissao = timezone.localdate()
@@ -432,7 +552,7 @@ class NFeService:
                 valor_span = linha.find("span", class_="totalNumb")            
                 if label and valor_span:
                     txt_lbl = label.get_text(strip=True).lower()
-                    val = self.clean_float(valor_span.get_text(strip=True))                
+                    val = self.normalizar_float(valor_span.get_text(strip=True))                
                     if "descontos" in txt_lbl: desconto = val
                     elif "valor a pagar" in txt_lbl: valor_total_nota = val
                     elif "valor total" in txt_lbl and valor_total_nota == 0: valor_total_nota = val
@@ -455,7 +575,7 @@ class NFeService:
 
         if pagamentos_validos:
             parcelas = len(pagamentos_validos)
-            forma_pagamento_key = self.predict_payment_method(pagamentos_validos[0])
+            forma_pagamento_key = self.preencher_forma_pagamento(pagamentos_validos[0])
         else:
             txt_total = div_total.get_text(" ", strip=True) if div_total else texto
             count_credito = len(re.findall(r"Cartão de Crédito", txt_total, re.I))
@@ -475,7 +595,7 @@ class NFeService:
                 qtd = 1.0
                 if span_qtd:
                     txt_qtd = span_qtd.get_text(strip=True).replace("Qtde.:", "").strip()
-                    qtd = self.clean_float(txt_qtd)
+                    qtd = self.normalizar_float(txt_qtd)
                 
                 span_un = row.find("span", class_="RUN")
                 unidade = "UN"
@@ -487,15 +607,15 @@ class NFeService:
                 vl_unit = 0.0
                 if span_vunit:
                     txt_vu = span_vunit.get_text(strip=True).replace("Vl. Unit.:", "").strip()
-                    vl_unit = self.clean_float(txt_vu)            
+                    vl_unit = self.normalizar_float(txt_vu)            
                 span_val = row.find("span", class_="valor")
                 vl_total_item = 0.0
                 if span_val:
-                    vl_total_item = self.clean_float(span_val.get_text(strip=True))
+                    vl_total_item = self.normalizar_float(span_val.get_text(strip=True))
                 else:
                     row_text = row.get_text(" ", strip=True)
                     m_vt = re.search(r"Vl\.?\s*Total[:\s]*R?\$?\s*([\d.,]+)", row_text, re.I)
-                    if m_vt: vl_total_item = self.clean_float(m_vt.group(1))
+                    if m_vt: vl_total_item = self.normalizar_float(m_vt.group(1))
                     else: vl_total_item = qtd * vl_unit
                 
                 itens_estruturados.append({"nome": nome, "qtd": qtd, "unidade": unidade, "vl_unit": vl_unit, "vl_total": vl_total_item})

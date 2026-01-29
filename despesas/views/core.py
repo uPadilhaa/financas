@@ -13,7 +13,6 @@ def home(request):
             dados = obter_dados_dashboard(request)
             context = dados["contexto"]
         except Exception:
-             # Em caso de erro (ex: banco vazio), falha silenciosa para renderizar home normal
              pass
     return render(request, "home.html", context)
 

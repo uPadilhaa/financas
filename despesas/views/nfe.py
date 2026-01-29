@@ -11,6 +11,19 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def importar_NFe(request):
+    """
+    Controlador para o processo de importação de NFe (Nota Fiscal Eletrônica).
+
+    Recebe o upload de imagem (QR Code) ou PDF. Delega o processamento ao NFeService,
+    captura os dados retornados (emitente, totais, itens) e prepara o formulário
+    de despesa pré-preenchido para revisão do usuário.
+
+    Args:
+        request (HttpRequest): A requisição HTTP contendo o arquivo 'imagem'.
+
+    Returns:
+        HttpResponse: Renderiza o formulário de despesa preenchido ou a página de upload.
+    """
     if request.method == "POST":
         form = UploadNFeForm(request.POST, request.FILES)
         if not form.is_valid():
@@ -30,13 +43,12 @@ def importar_NFe(request):
                 scraped = service.parse_nfe_danfe_pdf(arquivo)
             else:
                 img_bytes = arquivo.read()
-                url = service.decode_qr_from_bytes(img_bytes)
+                url = service.transform_qr_pra_bytes(img_bytes)
                 if url:
                     scraped = service.scrape_nfe_url(url)
         except Exception as e:
             logger.error(f"Error importing NFe: {e}")
-            # Consider adding a user message here if needed, but for now we proceed with empty scraped data
-            # to allow manual entry fallback.
+
         
         emitente = scraped.get("emitente") or ""
         pagamento_detectado = scraped.get("forma_pagamento_key")        
@@ -49,7 +61,7 @@ def importar_NFe(request):
             "parcelas_selecao": scraped.get("parcelas") or 1,
             "forma_pagamento": pagamento_detectado if pagamento_detectado else None,
             "data": scraped.get("data_emissao") or timezone.localdate(),
-            "categoria": service.predict_category(request.user, emitente or ""),
+            "categoria": service.prever_categoria(request.user, emitente or ""),
             "observacoes": f"Importado via QR Code.\nLink SEFAZ: {url}" if (url and not is_pdf) else "Importado via arquivo."
         }
 

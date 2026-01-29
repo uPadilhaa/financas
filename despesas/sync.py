@@ -12,7 +12,7 @@ def create_usuario_for_user(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=SocialAccount)
 def sync_profile_from_socialaccount(sender, instance, created, **kwargs):
-    # Quando o vínculo com Google é criado, puxa foto/nome se existir
+
     perfil, _ = Usuario.objects.get_or_create(user=instance.user)
     data = instance.extra_data or {}
     foto = data.get("picture")

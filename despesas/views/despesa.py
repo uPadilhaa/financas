@@ -15,6 +15,18 @@ from despesas.enums.forma_pagamento_enum import FormaPagamento
 
 @login_required
 def listar_despesa(request):
+    """
+    Exibe a listagem de despesas do usuário com opções de filtro e agrupamento.
+
+    Suporta filtros por busca textual, mês, ano e forma de pagamento.
+    As despesas são agrupadas visualmente por mês/ano na interface.
+
+    Args:
+        request (HttpRequest): A requisição HTTP.
+
+    Returns:
+        HttpResponse: A página HTML renderizada com a lista de despesas.
+    """
     busca = request.GET.get('busca')
     mes = request.GET.get('mes')
     ano = request.GET.get('ano')
@@ -73,6 +85,20 @@ def listar_despesa(request):
 
 @login_required
 def criar_despesa(request):
+    """
+    Processa o formulário de criação de nova despesa.
+
+    Gerencia transações atômicas para salvar a despesa e seus itens relacionados.
+    Realiza a divisão de valores em caso de parcelamento, criando múltiplos registros
+    de despesa (um para cada mês futuro), ajustando centavos na primeira parcela.
+    Dispara alertas de orçamento (Signals) após a confirmação da transação.
+
+    Args:
+        request (HttpRequest): A requisição HTTP.
+
+    Returns:
+        JsonResponse | HttpResponse: Resposta JSON para AJAX ou redirecionamento/renderização HTML.
+    """
     if request.method == 'GET' and not request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return redirect('listar_despesa')
 
@@ -85,13 +111,10 @@ def criar_despesa(request):
         
         if form.is_valid() and formset.is_valid():
             try:
-                # Importa o signal e a função receiver para desconectar temporariamente
                 from django.db.models.signals import post_save
                 from despesas.signals import disparar_alerta_orcamento_ao_salvar_despesa, _agendar_verificacao
-                
-                # Desconecta o signal para evitar disparar 12 emails síncronos (timeout)
+            
                 post_save.disconnect(disparar_alerta_orcamento_ao_salvar_despesa, sender=Despesa)
-                
                 try:
                     with transaction.atomic():
                         dados_base = form.cleaned_data                    
@@ -103,19 +126,14 @@ def criar_despesa(request):
                         data_inicial = dados_base.get('data')
                         total_centavos = int(valor_total_compra * 100)
                         base_centavos = total_centavos // qtd_parcelas
-                        resto_centavos = total_centavos % qtd_parcelas
-                        
-                        primeira_despesa_salva = None
-                        
-                        datas_para_verificar = set()
-                        
+                        resto_centavos = total_centavos % qtd_parcelas                       
+                        primeira_despesa_salva = None                        
+                        datas_para_verificar = set()                        
                         for i in range(qtd_parcelas):
                             parcela_cents = base_centavos + (1 if i < resto_centavos else 0)
                             valor_parcela_atual = Decimal(parcela_cents) / 100
-                            desc_parcela = dados_base.get('desconto', 0) if i == 0 else 0
-                            
-                            data_parcela = data_inicial + relativedelta(months=i)
-                            
+                            desc_parcela = dados_base.get('desconto', 0) if i == 0 else 0                            
+                            data_parcela = data_inicial + relativedelta(months=i)                            
                             nova_despesa = Despesa(
                                 user=request.user,
                                 categoria=dados_base['categoria'],
@@ -131,10 +149,8 @@ def criar_despesa(request):
                                 total_parcelas=qtd_parcelas,
                                 data=data_parcela
                             )
-                            nova_despesa.save()
-                            
+                            nova_despesa.save()                            
                             datas_para_verificar.add((data_parcela.year, data_parcela.month))
-
                             if i == 0:
                                 primeira_despesa_salva = nova_despesa
                             
@@ -164,15 +180,12 @@ def criar_despesa(request):
                                 transaction.on_commit(lambda d=data_ref: _agendar_verificacao(request.user, d))
 
                 finally:
-                    # Reconecta o signal SEMPRE, mesmo se der erro
                     post_save.connect(disparar_alerta_orcamento_ao_salvar_despesa, sender=Despesa)
-
                 msg = f"Despesa salva em {qtd_parcelas}x com sucesso!"
                 messages.success(request, msg)
                 return JsonResponse({'success': True, 'message': msg})
             except Exception as e:
-                return JsonResponse({'success': False, 'error': str(e)}, status=500)
-        
+                return JsonResponse({'success': False, 'error': str(e)}, status=500)        
         else:
             print("FORM ERRORS:", form.errors, form.non_field_errors())
             print("FORMSET ERRORS:", formset.errors, formset.non_form_errors())
@@ -191,6 +204,19 @@ def criar_despesa(request):
 
 @login_required
 def editar_despesa(request, pk: int):
+    """
+    Exibe e processa o formulário de edição de uma despesa existente.
+
+    Permite alterar dados da despesa e de seus itens (adicionar/remover/editar).
+    Atualiza o contador cacheado 'qtd_total_itens' após o salvamento.
+
+    Args:
+        request (HttpRequest): A requisição HTTP.
+        pk (int): Chave primária da despesa a ser editada.
+
+    Returns:
+        JsonResponse | HttpResponse: Redirecionamento ou resposta JSON de sucesso.
+    """
     despesa = get_object_or_404(Despesa, pk=pk, user=request.user)
     if request.method == "POST":
         form = DespesaForm(request.POST, instance=despesa, user=request.user)
@@ -231,6 +257,16 @@ def editar_despesa(request, pk: int):
 
 @login_required
 def deletar_despesa(request, pk: int):
+    """
+    Exibe a confirmação e processa a exclusão de uma despesa.
+
+    Args:
+        request (HttpRequest): A requisição HTTP.
+        pk (int): Chave primária da despesa a ser excluída.
+
+    Returns:
+        HttpResponse: Página de confirmação ou redirecionamento após exclusão.
+    """
     despesa = get_object_or_404(Despesa, pk=pk, user=request.user)
     if request.method == "POST":
         despesa.delete()

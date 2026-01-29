@@ -12,13 +12,31 @@ MAPA_MESES = {
 }
 
 def _formatar_moeda(valor: float) -> str:
-    """Formata float para string de moeda brasileira (R$ 1.234,56)."""
+    """
+    Formata um valor float para string monetária brasileira.
+
+    Exemplo: 1234.56 -> 'R$ 1.234,56'
+
+    Args:
+        valor (float): Valor numérico.
+
+    Returns:
+        str: String formatada.
+    """
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def layout_base(fig: go.Figure, altura: int = 320) -> go.Figure:
     """
-    Layout padrão 'Clean UI' aplicado a todos os gráficos.
-    Define fontes, cores, remoção de grids excessivos e comportamento responsivo.
+    Aplica o layout padrão 'Clean UI' do sistema aos gráficos Plotly.
+
+    Define fontes, margens, cores transparentes e comportamento responsivo.
+
+    Args:
+        fig (go.Figure): A figura Plotly a ser estilizada.
+        altura (int): Altura do gráfico em pixels (default: 320).
+
+    Returns:
+        go.Figure: A figura com layout atualizado.
     """
     fig.update_layout(
         margin=dict(t=30, b=30, l=20, r=20),
@@ -60,8 +78,16 @@ def layout_base(fig: go.Figure, altura: int = 320) -> go.Figure:
 
 def montar_grafico_evolucao_despesas(dados: Dict[str, Any]) -> str:
     """
-    Gráfico de Área (Spline) mostrando a evolução das despesas.
-    Utiliza a lista 'meses_ativos' para plotar apenas meses com dados relevantes.
+    Gera um gráfico de Área (Spline) mostrando a evolução temporal das despesas.
+
+    Utiliza a lista 'meses_ativos' para garantir que meses vazios não quebrem
+    a visualização.
+
+    Args:
+        dados (Dict[str, Any]): Dicionário contendo DataFrames e metadados.
+
+    Returns:
+        str: JSON da figura Plotly serializada.
     """
     df_despesas = dados["df_despesas"]
     meses_ativos = dados.get("meses_ativos", [])    
@@ -119,8 +145,13 @@ def montar_grafico_evolucao_despesas(dados: Dict[str, Any]) -> str:
 
 def montar_grafico_entradas_vs_saidas(dados: Dict[str, Any]) -> str:
     """
-    Gráfico de Barras comparando Entradas (Renda Fixa + Variável) vs Saídas.
-    Substitui o antigo gráfico de Investimentos.
+    Gera gráfico de Barras comparando Entradas (Renda Fixa + Extra) vs Saídas.
+
+    Args:
+        dados (Dict[str, Any]): Dicionário com DataFrames de despesas e receitas.
+
+    Returns:
+        str: JSON da figura Plotly serializada.
     """
     df_despesas = dados["df_despesas"]
     df_receitas = dados["df_receitas"]
@@ -179,7 +210,15 @@ def montar_grafico_entradas_vs_saidas(dados: Dict[str, Any]) -> str:
 
 
 def montar_grafico_pizza_categorias(df_despesas_mes) -> str:
-    """Gráfico de Donut: Distribuição de gastos do mês por categoria."""
+    """
+    Gera gráfico de Donut mostrando a distribuição de gastos por categoria.
+
+    Args:
+        df_despesas_mes (pd.DataFrame): DataFrame filtrado apenas com despesas do mês atual.
+
+    Returns:
+        str: JSON da figura Plotly serializada.
+    """
     figura = go.Figure()
     if df_despesas_mes.empty:
         figura = layout_base(figura, altura=280)
@@ -221,40 +260,41 @@ def montar_grafico_pizza_categorias(df_despesas_mes) -> str:
 
 
 def montar_grafico_top5_despesas(df_despesas) -> str:
-    """Gráfico de Barras Horizontais: Top 5 categorias com mais gastos."""
+    """
+    Gera gráfico de Barras Horizontais com as 5 categorias de maior gasto acumulado.
+
+    Args:
+        df_despesas (pd.DataFrame): DataFrame completo de despesas.
+
+    Returns:
+        str: JSON da figura Plotly serializada.
+    """
     figura = go.Figure()
 
     if df_despesas.empty:
         figura = layout_base(figura, altura=280)
         return json.dumps(figura, cls=plotly.utils.PlotlyJSONEncoder)
 
-    top5 = (
-        df_despesas.groupby("categoria__nome")["valor"]
-        .sum()
-        .sort_values(ascending=True)
-        .tail(5)
-    )
-
-    figura.add_trace(go.Bar(
-        x=top5.values.tolist(),
-        y=top5.index.tolist(),
-        orientation="h",
-        text=[_formatar_moeda(v) for v in top5.values],
-        textposition="outside",
-        marker=dict(color="#3b82f6", line=dict(width=0)),
-        cliponaxis=False,
-    ))
-    
-    figura.update_traces(
-        hovertemplate="<b>%{y}</b><br>R$ %{x:.2f}<extra></extra>"
-    )
-
+    top5 = df_despesas.groupby("categoria__nome")["valor"].sum().sort_values(ascending=True).tail(5)
+    figura.add_trace(go.Bar(x=top5.values.tolist(), y=top5.index.tolist(), orientation="h", text=[_formatar_moeda(v) for v in top5.values], textposition="outside", marker=dict(color="#3b82f6", line=dict(width=0)), cliponaxis=False,))
+    figura.update_traces(hovertemplate="<b>%{y}</b><br>R$ %{x:.2f}<extra></extra>")
     figura = layout_base(figura, altura=280)
     return json.dumps(figura, cls=plotly.utils.PlotlyJSONEncoder)
 
 
 def montar_grafico_orcado_realizado(usuario, df_despesas_mes) -> str:
-    """Gráfico de Barras Agrupadas: Orçado vs Realizado."""
+    """
+    Gera gráfico de Barras Agrupadas comparando Orçado vs Realizado por categoria.
+
+    Busca os orçamentos definidos no modelo Categoria e cruza com os gastos reais.
+
+    Args:
+        usuario (User): Usuário logado.
+        df_despesas_mes (pd.DataFrame): DataFrame de despesas do mês.
+
+    Returns:
+        str: JSON da figura Plotly serializada.
+    """
     figura = go.Figure()
 
     categorias = Categoria.objects.filter(user=usuario).values("nome", "orcamento_mensal")
@@ -272,29 +312,21 @@ def montar_grafico_orcado_realizado(usuario, df_despesas_mes) -> str:
     else:
         valores_realizados = [0.0 for _ in nomes]
 
-    figura.add_trace(go.Bar(
-        name="Orçado",
-        x=nomes,
-        y=valores_orcados,
-        marker=dict(color="#cbd5e1"),
-        hovertemplate="Orçado: R$ %{y:.2f}<extra></extra>"
-    ))
-    
-    figura.add_trace(go.Bar(
-        name="Realizado",
-        x=nomes,
-        y=valores_realizados,
-        marker=dict(color="#3b82f6"),
-        hovertemplate="Realizado: R$ %{y:.2f}<extra></extra>"
-    ))
-
+    figura.add_trace(go.Bar(name="Orçado", x=nomes, y=valores_orcados, marker=dict(color="#cbd5e1"), hovertemplate="Orçado: R$ %{y:.2f}<extra></extra>"))    
+    figura.add_trace(go.Bar(name="Realizado", x=nomes, y=valores_realizados, marker=dict(color="#3b82f6"), hovertemplate="Realizado: R$ %{y:.2f}<extra></extra>"))
     figura.update_layout(barmode="group", bargap=0.3, bargroupgap=0.1)
     figura = layout_base(figura, altura=320)
     return json.dumps(figura, cls=plotly.utils.PlotlyJSONEncoder)
 
 def montar_graficos_dashboard(dados: Dict[str, Any]) -> Dict[str, str]:
     """
-    Função principal que gera todos os gráficos e retorna um dicionário de JSONs.
+    Função wrapper que executa todas as montagens de gráficos.
+
+    Args:
+        dados (Dict[str, Any]): Dicionário mestre com todos os dados calculados (KPIs, DataFrames).
+
+    Returns:
+        Dict[str, str]: Dicionário mapeando {nome_grafico: json_plotly}.
     """
     df_despesas_mes = dados["df_despesas_mes"]
     graficos: Dict[str, str] = {}

@@ -11,4 +11,4 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 RUN python manage.py collectstatic --noinput
-CMD ["sh", "-c", "python manage.py migrate && gunicorn financas.wsgi:application --bind 0.0.0.0:$PORT"]
+CMD ["sh", "-c", "python manage.py migrate && gunicorn financas.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120"]

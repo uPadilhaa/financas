@@ -19,6 +19,15 @@ def formatar_real(valor: float) -> str:
     return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def _obter_configuracao_mensagem(limiar: int) -> dict:
+    """
+    Retorna a configuração visual/textual do e-mail baseada no nível de alerta.
+
+    Args:
+        limiar (int): A porcentagem do orçamento atingida (ex: 80, 90, 100).
+
+    Returns:
+        dict: Dicionário contendo cor, emoji, títulos e dicas personalizadas.
+    """
     if limiar <= 50:
         return {
             "cor": "#3dc944",  
@@ -66,6 +75,21 @@ def _obter_configuracao_mensagem(limiar: int) -> dict:
         }
 
 def enviar_email_alerta(perfil: Usuario, limiar: int, dados_orcamento: dict, link_despesas: str):
+    """
+    Renderiza e envia o e-mail de alerta de orçamento para o usuário.
+
+    Utiliza template HTML (emails/alerta_orcamento.html) e dados de contexto
+    como saldo, gastos atuais e dicas financeiras.
+
+    Args:
+        perfil (Usuario): O destinatário do alerta.
+        limiar (int): O nível de alerta disparado (ex: 80).
+        dados_orcamento (dict): Dados calculados sobre o orçamento do mês.
+        link_despesas (str): Link direto para o painel de despesas do mês.
+
+    Returns:
+        bool: True se o envio foi bem sucedido, False caso contrário.
+    """
     orcamento = dados_orcamento["orcamento"]
     total_despesas = dados_orcamento["total_despesas"]
     saldo = orcamento - total_despesas
@@ -108,6 +132,18 @@ def enviar_email_alerta(perfil: Usuario, limiar: int, dados_orcamento: dict, lin
         return False
 
 def verificar_e_disparar_alertas_orcamento(perfil: Usuario, data_referencia=None, base_url: str | None = None):
+    """
+    Verifica se o usuário atingiu algum limiar de alerta configurado e dispara notificação.
+
+    Calcula o gasto atual vs renda fixa. Se, por exemplo, o gasto ultrapassar 80%
+    e o usuário tiver configurado alerta para 80%, um e-mail é enviado.
+    Cria registro em AlertaOrcamento para evitar envio duplicado no mesmo mês.
+
+    Args:
+        perfil (Usuario): O usuário a ser verificado.
+        data_referencia (date, optional): Data para verificação (default: hoje).
+        base_url (str, optional): Base URL para construção de links no e-mail.
+    """
     if not getattr(perfil, "alertas_email_ativos", True):
         return
 
