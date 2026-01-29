@@ -70,10 +70,10 @@ def importar_NFe(request):
         for item in scraped.get("itens", []):
             initial_itens.append({
                 'nome': item['nome'],
-                'quantidade': str(item['qtd']).replace('.', ','), 
+                'quantidade': item.get('qtd') or 1, 
                 'unidade': item.get('unidade', 'UN'), 
-                'valor_unitario': str(item['vl_unit']).replace('.', ','),
-                'valor_total': str(item['vl_total']).replace('.', ',')
+                'valor_unitario': item.get('vl_unit') or 0,
+                'valor_total': item.get('vl_total') or 0
             })
             
         qtd_itens = len(initial_itens) or 1
