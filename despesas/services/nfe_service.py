@@ -294,7 +294,7 @@ class NFeService:
         try:
             with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
                 for page in pdf.pages:
-                    tables = page.extracao_tabelas()
+                    tables = page.extract_tables()
                     for table in tables:
                         header_idx = -1
                         col_map: dict[str, int] = {}
