@@ -61,7 +61,7 @@ def importar_NFe(request):
             "parcelas_selecao": scraped.get("parcelas") or 1,
             "forma_pagamento": pagamento_detectado if pagamento_detectado else None,
             "data": scraped.get("data_emissao") or timezone.localdate(),
-            "categoria": service.prever_categoria(request.user, emitente or ""),
+            "categoria": service.preencher_categoria(request.user, emitente or ""),
             "observacoes": f"Importado via QR Code.\nLink SEFAZ: {url}" if (url and not is_pdf) else "Importado via arquivo."
         }
 
