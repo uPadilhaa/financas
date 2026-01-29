@@ -76,10 +76,10 @@ class DespesaForm(forms.ModelForm):
         elif self.instance.pk and self.instance.valor:
              self.initial['valor'] = f"{self.instance.valor:.2f}".replace('.', ',')
 
-    def limpar_valor(self):
+    def clean_valor(self):
         return converter_para_decimal(self.cleaned_data.get('valor'))
 
-    def limpar_desconto(self):
+    def clean_desconto(self):
         return converter_para_decimal(self.cleaned_data.get('desconto'))
 
 
@@ -112,13 +112,13 @@ class ItemDespesaForm(forms.ModelForm):
             "codigo": forms.HiddenInput(),
         }
 
-    def limpar_quantidade(self):
+    def clean_quantidade(self):
         return converter_para_decimal(self.cleaned_data.get('quantidade'))
 
-    def limpar_valor_unitario(self):
+    def clean_valor_unitario(self):
         return converter_para_decimal(self.cleaned_data.get('valor_unitario'))
 
-    def limpar_valor_total(self):
+    def clean_valor_total(self):
         return converter_para_decimal(self.cleaned_data.get('valor_total'))
 
 ItemDespesaFormSet = inlineformset_factory(
