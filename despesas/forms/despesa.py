@@ -5,6 +5,18 @@ from despesas.models import Despesa, Categoria, ItemDespesa
 from despesas.enums.forma_pagamento_enum import FormaPagamento
 
 def converter_para_decimal(valor_raw):
+    """
+    Converte um valor monetário (string ou outro) para Decimal.
+
+    Remove símbolos de moeda, espaços e ajusta separadores decimais/milhares
+    para garantir uma conversão numérica válida.
+
+    Args:
+        valor_raw (str | any): O valor a ser convertido.
+
+    Returns:
+        Decimal: O valor convertido ou 0 se a conversão falhar.
+    """
     if valor_raw is None or valor_raw == '':
         return Decimal(0)
     
@@ -21,6 +33,12 @@ def converter_para_decimal(valor_raw):
         return Decimal(0)
 
 class DespesaForm(forms.ModelForm):
+    """
+    Formulário para criação e edição de Despesas.
+
+    Gerencia os campos do model Despesa, incluindo widgets customizados
+    com classes Bootstrap para a interface do usuário.
+    """
     valor = forms.CharField(
         label="Valor Total (R$)",
         required=True,
@@ -84,6 +102,12 @@ class DespesaForm(forms.ModelForm):
 
 
 class ItemDespesaForm(forms.ModelForm):
+    """
+    Formulário para os Itens de uma Despesa (Inline).
+
+    Utilizado no FormSet para permitir a inclusão dinâmica de múltiplos
+    itens vinculados a uma despesa.
+    """
     quantidade = forms.CharField(
         required=True,
         widget=forms.TextInput(attrs={"class": "form-control form-control-sm item-qtd", "placeholder": "1"})

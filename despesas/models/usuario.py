@@ -25,6 +25,7 @@ class Usuario(models.Model):
             list[int]: Lista de inteiros ordenados (ex: [80, 90, 100]).
         """
         try:
-            return sorted([int(x.strip()) for x in self.limiares_alerta.split(",") if x.strip().isdigit()])
+            parsed = [int(x.strip()) for x in self.limiares_alerta.split(",") if x.strip().isdigit()]
+            return sorted(parsed) if parsed else [80, 90, 100]
         except:
             return [80, 90, 100]

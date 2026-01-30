@@ -24,28 +24,25 @@ class NFeService:
     @property
     def qreader(self):
         """
-        Retorna a instância Singleton do QReader.
+        Retorna a instância do leitor QReader (Singleton).
 
-        Carrega o modelo na memória apenas na primeira vez que for chamado.
-        Tenta usar o modelo 'nano' para economizar memória RAM (CRÍTICO para Render Free Tier).
+        Inicializa o modelo QReader na primeira chamada para otimizar o uso de recursos.
+        Utiliza o modelo 'nano' para compatibilidade com ambientes de memória limitada.
 
         Returns:
-            QReader | None: A instância do leitor de QR Code ou None em caso de erro crítico.
+             QReader: Instância do objeto QReader inicializada ou None em caso de erro.
         """
         global _INSTANCIA_QREADER
         if _INSTANCIA_QREADER is None:
             try:
-                logger.info("Iniciando carregamento do modelo QReader (Nano) na memória...")
                 from qreader import QReader
                 _INSTANCIA_QREADER = QReader(model_size='n') 
-                logger.info("Modelo QReader (Nano) carregado com sucesso.")
             except ImportError:
                  logger.error("Biblioteca QReader não instalada.")
                  return None
             except Exception as e:
-                logger.critical(f"Falha crítica ao carregar QReader (possível OOM): {e}")
+                logger.critical(f"Falha crítica ao carregar QReader: {e}")
                 return None
-
         return _INSTANCIA_QREADER
 
     def validar_url(self, url: str) -> bool:
@@ -86,20 +83,19 @@ class NFeService:
             logger.error(f"URL Validation error: {e}")
             return False
 
-    def transform_qr_pra_bytes(self, img_bytes: bytes) -> str | None:
+    def decodificar_qr_code(self, img_bytes: bytes) -> str | None:
         """
-        Decodifica um QR Code contido em uma imagem (bytes).
+        Decodifica o conteúdo de um QR Code presente em uma imagem.
 
-        Utiliza a biblioteca QReader e OpenCV. Se a decodificação inicial falhar,
-        aplica um filtro de limiar adaptativo (adaptive threshold) para melhorar
-        o contraste e tenta novamente. Aplica redimensionamento preventivo para
-        evitar estouro de memória com imagens de alta resolução.
+        Processa os bytes da imagem utilizando OpenCV para pré-processamento e
+        QReader para detecção e decodificação. Realiza redimensionamento e
+        tratamento de limiar para melhorar a taxa de sucesso.
 
         Args:
-            img_bytes (bytes): O conteúdo binário da imagem.
+            img_bytes (bytes): Conteúdo binário da imagem a ser processada.
 
         Returns:
-            str | None: A URL ou texto decodificado do QR Code, ou None se falhar.
+            str | None: String contendo o dado decodificado ou None se falhar.
         """
         try:
             if self.qreader is None:
@@ -215,19 +211,19 @@ class NFeService:
             return False
         return True
 
-    def preencher_categoria(self, user, emitente_nome: str) -> int | None:
+    def identificar_categoria(self, user, emitente_nome: str) -> int | None:
         """
-        Prediz a categoria da despesa com base no nome do estabelecimento (emitente).
+        Identifica a categoria provável da despesa baseada no nome do emitente.
 
-        Utiliza um dicionário de palavras-chave mapeadas para categorias comuns (ex: 'Zaffari' -> 'Mercado').
-        Busca no banco de dados se a categoria sugerida existe para o usuário.
+        Analisa o nome do estabelecimento comparando com uma lista de palavras-chave
+        pré-definidas para sugerir uma categoria existente no perfil do usuário.
 
         Args:
-            user (User): O usuário dono da despesa.
-            emitente_nome (str): O nome do estabelecimento comercial.
+            user (Usuario): O usuário para o qual a categoria será buscada.
+            emitente_nome (str): Nome do estabelecimento ou emitente da nota.
 
         Returns:
-            int | None: O ID da categoria encontrada ou None.
+            int | None: ID da categoria identificada ou None se não houver correspondência.
         """
         if not emitente_nome: return None
         txt = emitente_nome.lower()
@@ -258,15 +254,18 @@ class NFeService:
             if cat: return cat.pk
         return None
 
-    def preencher_forma_pagamento(self, text: str) -> str | None:
+    def identificar_forma_pagamento(self, text: str) -> str | None:
         """
-        Infere a forma de pagamento a partir de textos descritivos da nota.
+        Identifica a forma de pagamento a partir de um texto descritivo.
+
+        Analisa strings comuns em notas fiscais para determinar se o pagamento
+        foi realizado em Crédito, Débito, Pix ou Dinheiro.
 
         Args:
-            text (str): Texto contendo a forma de pagamento (ex: 'Cartão de Crédito').
+            text (str): Texto descrevendo a forma de pagamento.
 
         Returns:
-            str | None: A chave do enum FormaPagamento ou None.
+            str | None: Constante da classe FormaPagamento ou None.
         """
         t = text.lower()
         if "crédito" in t or "credito" in t: return FormaPagamento.CREDITO
@@ -275,18 +274,19 @@ class NFeService:
         if "dinheiro" in t: return FormaPagamento.DINHEIRO
         return None
 
-    def extracao_itens(self, pdf_file) -> list[dict]:
+    def extrair_itens_pdf(self, pdf_file) -> list[dict]:
         """
-        Extrai itens de compra de um arquivo PDF utilizando mineração de texto (pdfplumber).
+        Extrai a lista de itens e produtos de um arquivo PDF (DANFE).
 
-        Identifica tabelas de produtos, colunas de descrição, quantidade e valor,
-        e tenta normalizar os dados encontrados.
+        Utiliza a biblioteca pdfplumber para ler tabelas e textos do PDF,
+        identificando colunas relevantes como descrição, quantidade, valor unitário
+        e valor total.
 
         Args:
-            pdf_file (file): O arquivo PDF aberto.
+            pdf_file (file): Objeto de arquivo PDF aberto para leitura.
 
         Returns:
-            list[dict]: Lista de dicionários contendo os itens extraídos (nome, qtd, valor, etc).
+            list[dict]: Lista de dicionários representando os itens extraídos.
         """        
         pdf_bytes = pdf_file.read()
         itens: list[dict] = []
@@ -444,22 +444,22 @@ class NFeService:
 
         return itens
 
-    def parse_nfe_danfe_pdf(self, uploaded_file) -> dict:
+    def processar_danfe_pdf(self, uploaded_file) -> dict:
         """
-        Realiza o parsing completo de uma Nota Fiscal Eletrônica em formato PDF (DANFE).
+        Processa um arquivo PDF de DANFE para extrair informações da nota fiscal.
 
-        Combina a extração tabular de itens com a busca via Regex por metadados
-        (Emitente, CNPJ, Datas, Valores Totais) no texto completo do documento.
+        Coordena a extração de itens e metadados (emitente, CNPJ, data, totais)
+        analisando tanto a estrutura tabular quanto o texto livre do documento.
 
         Args:
-            uploaded_file (file): O arquivo PDF enviado pelo usuário.
+            uploaded_file (file): Arquivo PDF da nota fiscal enviado pelo usuário.
 
         Returns:
-            dict: Dicionário contendo todos os dados estruturados da nota.
+            dict: Dicionário contendo os dados estruturados da nota fiscal.
         """
         pdf_bytes = uploaded_file.read()    
         uploaded_file.seek(0)
-        itens_estruturados = self.extracao_itens(uploaded_file)    
+        itens_estruturados = self.extrair_itens_pdf(uploaded_file)    
         uploaded_file.seek(0)
         full_text = ""
         try:
@@ -520,18 +520,18 @@ class NFeService:
             "itens": itens_estruturados,
         }
 
-    def scrape_nfe_url(self, url: str) -> dict:
+    def extrair_dados_url(self, url: str) -> dict:
         """
-        Realiza Web Scraping da página da Nota Fiscal (SEFAZ).
+        Extrai dados de uma Nota Fiscal a partir da URL (Web Scraping).
 
-        Acessa a URL, valida a segurança e utiliza BeautifulSoup para extrair
-        dados do emitente, totais e a lista de itens da tabela HTML.
+        Realiza uma requisição HTTP segura para a URL fornecida e processa o HTML
+        retornado para capturar dados da nota, emitente e itens.
 
         Args:
-            url (str): A URL do QRCode da nota fiscal.
+            url (str): URL pública da nota fiscal (QRCode).
 
         Returns:
-            dict: Dicionário com os dados extraídos da página.
+            dict: Dicionário com as informações extraídas da página.
         """
         if not self.validar_url(url):
              logger.warning(f"Invalid URL rejected: {url}")
@@ -596,7 +596,7 @@ class NFeService:
 
         if pagamentos_validos:
             parcelas = len(pagamentos_validos)
-            forma_pagamento_key = self.preencher_forma_pagamento(pagamentos_validos[0])
+            forma_pagamento_key = self.identificar_forma_pagamento(pagamentos_validos[0])
         else:
             txt_total = div_total.get_text(" ", strip=True) if div_total else texto
             count_credito = len(re.findall(r"Cartão de Crédito", txt_total, re.I))

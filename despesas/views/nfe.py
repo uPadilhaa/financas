@@ -40,12 +40,12 @@ def importar_NFe(request):
 
         try:
             if is_pdf:
-                scraped = service.parse_nfe_danfe_pdf(arquivo)
+                scraped = service.processar_danfe_pdf(arquivo)
             else:
                 img_bytes = arquivo.read()
-                url = service.transform_qr_pra_bytes(img_bytes)
+                url = service.decodificar_qr_code(img_bytes)
                 if url:
-                    scraped = service.scrape_nfe_url(url)
+                    scraped = service.extrair_dados_url(url)
         except Exception as e:
             logger.error(f"Error importing NFe: {e}")
 
@@ -61,7 +61,7 @@ def importar_NFe(request):
             "parcelas_selecao": scraped.get("parcelas") or 1,
             "forma_pagamento": pagamento_detectado if pagamento_detectado else None,
             "data": scraped.get("data_emissao") or timezone.localdate(),
-            "categoria": service.preencher_categoria(request.user, emitente or ""),
+            "categoria": service.identificar_categoria(request.user, emitente or ""),
             "observacoes": f"Importado via QR Code.\nLink SEFAZ: {url}" if (url and not is_pdf) else "Importado via arquivo."
         }
 

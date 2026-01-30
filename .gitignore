@@ -34,3 +34,4 @@ htmlcov/
 .vscode/
 .idea/
 *.code-workspace
+run_test_capture.py

@@ -8,14 +8,26 @@ logger = logging.getLogger(__name__)
 @shared_task(bind=True, max_retries=3)
 def task_verificar_alertas_orcamento(self, perfil_id, data_referencia=None):
     """
-    Task executada em Thread para evitar bloquear o Worker do Gunicorn no Render (Timeout).
+    Executa a verificação de alertas de orçamento em background.
+
+    Utiliza uma thread separada para evitar bloqueio do Worker do Gunicorn,
+    essencial para ambientes com Timeout agressivo como o Render.
+
+    Args:
+        perfil_id (int): ID do Usuário a ser verificado.
+        data_referencia (date, optional): Data de referência para os cálculos.
     """
     import threading
     from django.db import connections
     
     def _execucao_background():
+        """
+        Função interna executada em Thread separada.
+
+        Gerencia o ciclo de vida da conexão com o banco de dados para evitar
+        leaks e erros de thread-safety do Django.
+        """
         try:
-            # Garante que a thread tenha conexão limpa com o banco
             connections.close_all()
             
             try:
@@ -29,6 +41,5 @@ def task_verificar_alertas_orcamento(self, perfil_id, data_referencia=None):
         finally:
             connections.close_all()
 
-    # Inicia a thread e deixa rodando (Fire-and-forget)
     thread = threading.Thread(target=_execucao_background)
     thread.start()
