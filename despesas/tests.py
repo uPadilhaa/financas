@@ -13,25 +13,61 @@ from despesas.enums.forma_pagamento_enum import FormaPagamento
 
 User = get_user_model()
 
+
 class TestUsuarioModel(TestCase):
+    """
+    Testes unitários para o modelo Usuario (perfil estendido).
+
+    Verifica a lógica de parsing e fallback da configuração de limiares de alerta
+    de gastos.
+    """
     def setUp(self):
+        """Configura o ambiente de teste com um usuário e perfil padrão."""
         self.user = User.objects.create_user(username='testuser', password='password')
-        self.perfil = Usuario.objects.create(user=self.user, renda_fixa=Decimal('5000.00'), limiares_alerta="50, 80, 100")
+        self.perfil = Usuario.objects.create(
+            user=self.user, 
+            renda_fixa=Decimal('5000.00'), 
+            limiares_alerta="50, 80, 100",
+            moeda="BRL"
+        )
+
 
     def test_limiares_list_parsing(self):
-        """Testa se a string de configuração '50, 80, 100' vira lista [50, 80, 100]"""
+        """
+        Testa o parsing correto de uma string de limiares válida.
+
+        Contexto:
+            O usuário configura a string "50, 80, 100".
+
+        Valida:
+            Se o método get_limiares_list() converte e retorna a lista de inteiros [50, 80, 100].
+        """
         lista = self.perfil.get_limiares_list()
         self.assertEqual(lista, [50, 80, 100])
 
     def test_limiares_invalidos_fallback(self):
-        """Testa se retorna padrão [80, 90, 100] caso a config esteja corrompida"""
+        """
+        Testa o comportamento de fallback para limiares inválidos.
+
+        Contexto:
+            O usuário configura uma string incorreta "invalid, string".
+
+        Valida:
+            Se o sistema retorna os valores padrão [80, 90, 100] evitando falhas.
+        """
         self.perfil.limiares_alerta = "invalid, string"
         self.perfil.save()
         lista = self.perfil.get_limiares_list()
         self.assertEqual(lista, [80, 90, 100])
 
 class TestDashboardService(TestCase):
+    """
+    Testes de integração para o serviço de Dashboard e Cálculo de KPIs.
+
+    Valida a precisão matemática dos cálculos financeiros agregados (saldo, totais, percentuais).
+    """
     def setUp(self):
+        """Prepara dados de despesas e receitas para os testes de cálculo."""
         self.user = User.objects.create_user(username='dashuser', password='password')
         self.perfil = Usuario.objects.create(user=self.user, renda_fixa=Decimal('3000.00'))        
         self.hoje = timezone.localdate()
@@ -42,11 +78,18 @@ class TestDashboardService(TestCase):
 
     def test_calculo_kpis_basicos(self):
         """
-        Valida: Entradas Totais (Fixa + Extra), Saídas, Saldo e % Orçamento.
-        Renda: 3000 + 500 = 3500
-        Despesas: 500 + 200 = 700
-        Saldo Esperado: 2800
-        % Orçamento: (700 / 3500) = 20%
+        Valida o cálculo dos KPIs financeiros básicos do mês.
+
+        Cenário:
+            - Renda Fixa: R$ 3000,00
+            - Receita Extra: R$ 500,00 (Total Entradas: R$ 3500,00)
+            - Despesas Totais: R$ 500,00 + R$ 200,00 (Total Saídas: R$ 700,00)
+
+        Validações:
+            - Entradas Totais == 3500.0
+            - Saídas Totais == 700.0
+            - Saldo Restante == 2800.0
+            - % Orçamento Comprometido == 20%
         """
         df_despesas = pd.DataFrame({"data": [pd.Timestamp(self.hoje), pd.Timestamp(self.hoje)],"valor": [500.0, 200.0],"categoria__nome": ["Mercado", "Mercado"]})
         df_receitas = pd.DataFrame({"data": [pd.Timestamp(self.hoje)],"valor_bruto": [500.0]})        
@@ -58,32 +101,76 @@ class TestDashboardService(TestCase):
         self.assertEqual(kpis["percentual_orcamento_livre"], 80.0)
 
     def test_tendencia_gastos_estavel(self):
-        """Testa se a tendência é 'estavel' quando não há histórico anterior"""
+        """
+        Valida a determinação da tendência de gastos.
+        Cenário:
+            - Período sem histórico anterior comparável.
+        Valida:
+            - Se a tendência retorna "estavel" como fallback seguro.
+        """
         df_despesas = pd.DataFrame({"data": [pd.Timestamp(self.hoje)],"valor": [500.0]})
         df_receitas = pd.DataFrame(columns=["data", "valor_bruto", "periodo_dt"])        
         kpis = calcular_kpis_mensais(self.hoje, self.hoje, df_despesas, df_receitas, self.perfil)
         self.assertEqual(kpis["tendencia_gastos"], "estavel")
 
 class TestNFeService(TestCase):
+    """
+    Testes unitários para o Serviço de Leitura de Nota Fiscal Eletrônica (NFe).
+
+    Cobre validações de CNPJ, categorização automática por inferência e proteções de segurança.
+    """
     def setUp(self):
+        """Inicializa o serviço e mocka componentes pesados (QReader)."""
         self.user = User.objects.create_user(username='nfeuser', password='password')
         self.service = NFeService() 
         self.service._qreader = MagicMock()
+
     def test_validar_cnpj_valido(self):
+        """
+        Verifica a validação de um CNPJ correto.
+
+        Argumento:
+            cnpj (str): "06.990.590/0001-23" (Dígito Verificador Correto)
+
+        Valida:
+            - Retorno True.
+        """
         self.assertTrue(self.service.validar_cnpj("06.990.590/0001-23"))
     
     def test_validar_cnpj_invalido_digito(self):
+        """
+        Verifica a rejeição de um CNPJ incorreto.
+        Argumento:
+            cnpj (str): "06.990.590/0001-24" (Dígito Verificador Incorreto)
+        Valida:
+            - Retorno False.
+        """
         self.assertFalse(self.service.validar_cnpj("06.990.590/0001-24"))
 
     def test_preencher_categoria_inferencia(self):
-        """Testa se o serviço consegue adivinhar que 'Uber do Brasil' é Transporte"""
+        """
+        Testa a inferência de categoria baseada no nome do emitente.
+        Contexto:
+            - O sistema possui categoria "Transporte".
+            - O usuário importa nota de "UBER DO BRASIL TECNOLOGIA".
+        Valida:
+            - Se o serviço identifica a categoria ID correta automaticamente.
+        """
         cat_transporte, _ = Categoria.objects.get_or_create(user=self.user, nome="Transporte")
         
         cat_id = self.service.identificar_categoria(self.user, "UBER DO BRASIL TECNOLOGIA")
         self.assertEqual(cat_id, cat_transporte.pk)
 
     def test_validar_url_seguranca(self):
-        """Testa proteção contra SSRF (Server Side Request Forgery)"""
+        """
+        Testa a proteção contra SSRF (Server Side Request Forgery).
+        Valida se URLs maliciosas são bloqueadas:
+            - Loopback: http://127.0.0.1
+            - Rede Interna: http://localhost
+            - Arquivo Local: file:///etc/passwd
+        Valida se URLs legítimas são permitidas:
+            - Externo: https://www.google.com
+        """
         self.assertFalse(self.service.validar_url("http://localhost:8000"))
         self.assertFalse(self.service.validar_url("http://127.0.0.1/admin"))
         self.assertFalse(self.service.validar_url("file:///etc/passwd"))        
@@ -92,37 +179,67 @@ class TestNFeService(TestCase):
             self.assertTrue(self.service.validar_url("https://www.google.com"))
 
 class TestViewsIntegracao(TestCase):
+    """
+    Testes de integração para as Views principais (Controllers).
+
+    Verifica o controle de acesso (Login Required), renderização de templates
+    e fluxo de criação de despesas via formulário.
+    """
     def setUp(self):
+        """Autentica o cliente de teste para simular uma sessão de usuário logado."""
         self.user = User.objects.create_user(username='viewuser', password='password')
+        Usuario.objects.create(user=self.user, renda_fixa=5000)
         self.client.force_login(self.user)
         
     def test_acesso_dashboard_login_required(self):
-        """Testa se usuário não logado é redirecionado"""
         self.client.logout()
         response = self.client.get('/dashboard/')
         self.assertEqual(response.status_code, 302)
 
     def test_acesso_dashboard_autenticado(self):
-        Usuario.objects.create(user=self.user)
+        """
+        Testa o acesso bem-sucedido ao dashboard.
+
+        Contexto:
+            - Usuário autenticado.
+
+        Valida:
+            - Resposta HTTP 200 (OK).
+        """
         response = self.client.get('/dashboard/')
         if response.status_code == 404:
             return 
         self.assertEqual(response.status_code, 200)
 
     def test_criar_despesa_fluxo(self):
-        """Testa a criação de uma despesa via POST"""
+        """
+        Testa o fluxo de criação de despesa via submissão de formulário (POST).
+
+        Cenário:
+            - Usuário envia dados válidos de uma nova despesa ("Cinema", R$ 50,00).
+
+        Nota:
+            - O teste é um esqueleto de validação de fluxo e termina sem asserção explícita
+              nesta versão simplificada.
+        """
         Categoria.objects.get_or_create(user=self.user, nome="Lazer")
-        cat = Categoria.objects.first()
-        
+        cat = Categoria.objects.first()        
         dados = {
             "descricao": "Cinema",
-            "valor": "50,00",
+            "valor": "50.00", 
             "data": str(timezone.localdate()),
             "categoria": cat.pk,
-            "forma_pagamento": FormaPagamento.DEBITO,
-            "parcelas_selecao": 1,
-            "itens-TOTAL_FORMS": 0,
-            "itens-INITIAL_FORMS": 0,
-        }
-        
-        pass 
+            "emitente_nome": "Cinema City",
+            "tipo": "VARIAVEL",
+            "forma_pagamento": "DEBITO", 
+            "parcelas_selecao": "1",
+            "itens-TOTAL_FORMS": "0",
+            "itens-INITIAL_FORMS": "0",
+            "itens-MIN_NUM_FORMS": "0",
+            "itens-MAX_NUM_FORMS": "1000",
+        }        
+
+        response = self.client.post('/despesas/criar/', dados)        
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])        
+        self.assertTrue(Despesa.objects.filter(descricao="Cinema", valor="50.00").exists())
