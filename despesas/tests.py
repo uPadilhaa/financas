@@ -267,3 +267,46 @@ class TestViewsIntegracao(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json()['success'])        
         self.assertTrue(Despesa.objects.filter(descricao="Cinema", valor="50.00").exists())
+
+    def test_criar_despesa_fixa_replicacao(self):
+        """
+        Testa a replicação automática de despesas fixas para o ano corrente.
+        
+        Cenário:
+            - Despesa "Aluguel" (Fixa) de R$ 1000,00 criada em Outubro/2026.
+        
+        Valida:
+            - Criação de 3 registros: Out, Nov, Dez.
+            - Valor integral (R$ 1000,00) em cada uma (sem divisão).
+        """
+        Categoria.objects.get_or_create(user=self.user, nome="Moradia")
+        cat = Categoria.objects.first()
+        
+        data_simulada = timezone.datetime(2026, 10, 1).date()        
+        dados = {
+            "descricao": "Aluguel",
+            "valor": "1000.00", 
+            "data": str(data_simulada),
+            "categoria": cat.pk,
+            "emitente_nome": "Imobiliária",
+            "tipo": "FIXA",
+            "forma_pagamento": "PIX", 
+            "parcelas_selecao": "1", 
+            "itens-TOTAL_FORMS": "0",
+            "itens-INITIAL_FORMS": "0",
+            "itens-MIN_NUM_FORMS": "0",
+            "itens-MAX_NUM_FORMS": "1000",
+        }
+
+        response = self.client.post('/despesas/criar/', dados)
+        self.assertEqual(response.status_code, 200)
+        
+        despesas_criadas = Despesa.objects.filter(descricao="Aluguel").order_by('data')
+        self.assertEqual(despesas_criadas.count(), 3)
+        
+        meses_esperados = [10, 11, 12]
+        for i, desp in enumerate(despesas_criadas):
+            self.assertEqual(desp.data.month, meses_esperados[i])
+            self.assertEqual(desp.data.year, 2026)
+            self.assertEqual(desp.valor, Decimal('1000.00'))
+            self.assertEqual(str(desp.tipo), "FIXA")
