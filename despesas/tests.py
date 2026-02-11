@@ -147,6 +147,30 @@ class TestNFeService(TestCase):
         """
         self.assertFalse(self.service.validar_cnpj("06.990.590/0001-24"))
 
+    def test_preencher_categoria_historico(self):
+        """
+        Testa a inferência de categoria baseada no histórico de despesas.
+        
+        Contexto:
+            - Usuário já lançou despesa anterior em "Padaria do Zé" como "Alimentação".
+            - Nova nota de "Padaria do Zé" é processada (sem palavra-chave nos mappings).
+            
+        Valida:
+            - Se o serviço sugere "Alimentação" recuperando do histórico.
+        """
+        cat_alimentacao, _ = Categoria.objects.get_or_create(user=self.user, nome="Alimentação")
+        
+        Despesa.objects.create(
+            user=self.user, 
+            emitente_nome="Padaria do Zé", 
+            categoria=cat_alimentacao, 
+            valor=Decimal('10.00'),
+            forma_pagamento=FormaPagamento.DINHEIRO
+        )
+
+        cat_id = self.service.identificar_categoria(self.user, "Padaria do Zé")
+        self.assertEqual(cat_id, cat_alimentacao.pk)
+
     def test_preencher_categoria_inferencia(self):
         """
         Testa a inferência de categoria baseada no nome do emitente.

@@ -10,7 +10,7 @@ import socket
 import ipaddress
 
 
-from despesas.models import Categoria
+from despesas.models import Categoria, Despesa
 from despesas.enums.forma_pagamento_enum import FormaPagamento
 
 logger = logging.getLogger(__name__)
@@ -252,6 +252,18 @@ class NFeService:
         if sugestao:
             cat = Categoria.objects.filter(user=user, nome__icontains=sugestao).first()
             if cat: return cat.pk
+            
+        try:
+            ultima_despesa = Despesa.objects.filter(
+                user=user, 
+                emitente_nome__iexact=emitente_nome
+            ).order_by('-data').first()
+            
+            if ultima_despesa and ultima_despesa.categoria:
+                return ultima_despesa.categoria.pk
+        except Exception as e:
+            logger.warning(f"Erro ao buscar categoria no histórico: {e}")
+            
         return None
 
     def identificar_forma_pagamento(self, text: str) -> str | None:
