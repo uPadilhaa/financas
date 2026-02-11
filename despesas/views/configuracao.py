@@ -47,6 +47,7 @@ def deletar_conta(request):
         form = DeleteAccountForm(request.POST)
         if form.is_valid():
             user = request.user
+            logout(request)
             user.delete()
             messages.success(request, "Sua conta foi excluída com sucesso.")
             return redirect("home") 
