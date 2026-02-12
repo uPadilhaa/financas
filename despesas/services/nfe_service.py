@@ -71,22 +71,13 @@ class NFeService:
             if not hostname:
                 return False
 
-            if not any(hostname.endswith(domain) for domain in self.ALLOWED_NFE_DOMAINS):
-                logger.warning(f"URL Blocked by Allowlist: {url}")
-                return False
+            hostname_lower = hostname.lower()
+            if any((hostname_lower == domain or hostname_lower.endswith(f".{domain}")) for domain in self.ALLOWED_NFE_DOMAINS):
+                return True
 
-            try:
-                ip = socket.gethostbyname(hostname)
-            except socket.gaierror:
-                return False
-
-            ip_obj = ipaddress.ip_address(ip)
-
-            if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local:
-                logger.warning(f"SSRF Attempt blocked for URL: {url} (IP: {ip})")
-                return False
+            logger.warning(f"URL Blocked by Allowlist: {url}")
+            return False
             
-            return True
         except Exception as e:
             logger.error(f"URL Validation error: {e}")
             return False
