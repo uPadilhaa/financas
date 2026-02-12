@@ -45,18 +45,22 @@ class NFeService:
                 return None
         return _INSTANCIA_QREADER
 
+    ALLOWED_NFE_DOMAINS = [
+        ".gov.br",
+    ]
+
     def validar_url(self, url: str) -> bool:
         """
-        Valida se a URL é segura para requisição e previne ataques SSRF.
+        Valida se a URL é segura para requisição e previne ataques SSRF (Allowlist).
 
-        Verifica se o esquema é HTTP/HTTPS e resolve o DNS do hostname para garantir
-        que o IP de destino não pertença a redes privadas, locais ou de loopback.
+        Verifica se o esquema é HTTP/HTTPS e se o domínio pertence à lista de domínios confiáveis (SEFAZ).
+        Adicionalmente, resolve o DNS para garantir que o IP não seja privado.
 
         Args:
             url (str): A URL a ser verificada.
 
         Returns:
-            bool: True se a URL for pública e segura, False caso contrário.
+            bool: True se a URL for pública e confiável, False caso contrário.
         """
         try:
             parsed = urlparse(url)
@@ -65,6 +69,10 @@ class NFeService:
             
             hostname = parsed.hostname
             if not hostname:
+                return False
+
+            if not any(hostname.endswith(domain) for domain in self.ALLOWED_NFE_DOMAINS):
+                logger.warning(f"URL Blocked by Allowlist: {url}")
                 return False
 
             try:
