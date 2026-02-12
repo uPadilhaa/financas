@@ -46,7 +46,7 @@ class NFeService:
         return _INSTANCIA_QREADER
 
     ALLOWED_NFE_DOMAINS = [
-        ".gov.br",
+        "gov.br",
     ]
 
     def validar_url(self, url: str) -> bool:
