@@ -550,27 +550,39 @@ class NFeService:
 
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0"}
         try:
+            logger.info(f"Fetching URL: {url}")
             resp = requests.get(url, headers=headers, timeout=20)
+            logger.info(f"Response Status: {resp.status_code}")
             resp.raise_for_status()
         except Exception as e:
             logger.error(f"Request failed: {e}")
             return {}
             
-        soup = BeautifulSoup(resp.text, "html.parser")    
+        soup = BeautifulSoup(resp.text, "html.parser")
+        logger.info("BS4 parsing successful. Extracting fields...")
         
         emitente = "Consumidor"
         cnpj = None
         div_topo = soup.find("div", class_="txtTopo")
-        if div_topo: emitente = div_topo.get_text(strip=True)    
+        if div_topo: 
+            emitente = div_topo.get_text(strip=True)
+            logger.info(f"Emitente extracted: {emitente}")
+        else:
+            logger.warning("Emitente div.txtTopo NOT FOUND")
+            
         texto = soup.get_text(" ", strip=True)    
         m_cnpj = re.search(r"CNPJ[:\s]*(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})", texto)
         if m_cnpj and self.validar_cnpj(m_cnpj.group(1)):
             cnpj = m_cnpj.group(1)
+            logger.info(f"CNPJ extracted: {cnpj}")
+        else:
+             logger.warning("CNPJ NOT FOUND or Invalid")
 
         data_emissao = timezone.localdate()
         mensagem_data = re.search(r"Emiss[ãa]o\s*:?\s*(\d{2}/\d{2}/\d{4})", texto, re.I)
         if mensagem_data:
-            try: data_emissao = dateparser.parse(mensagem_data.group(1), dayfirst=True).date()
+            try: 
+                data_emissao = dateparser.parse(mensagem_data.group(1), dayfirst=True).date()
             except: pass
         
         valor_total_nota = 0.0
